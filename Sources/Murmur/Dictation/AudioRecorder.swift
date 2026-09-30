@@ -114,6 +114,17 @@ final class AudioRecorder: @unchecked Sendable {
 
     func cancel() { _ = stop() }
 
+    /// Runs buffers through the same conversion path the microphone uses (for tests).
+    func convertForTest(_ buffers: [AVAudioPCMBuffer]) -> [Float] {
+        guard let format = buffers.first?.format, let converter = AVAudioConverter(from: format, to: targetFormat) else { return [] }
+        self.converter = converter
+        lock.lock(); samples.removeAll(); lock.unlock()
+        for b in buffers { process(b) }
+        self.converter = nil
+        lock.lock(); defer { samples.removeAll(); lock.unlock() }
+        return samples
+    }
+
     var duration: TimeInterval {
         lock.lock()
         defer { lock.unlock() }

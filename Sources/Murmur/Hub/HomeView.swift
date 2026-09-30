@@ -121,7 +121,7 @@ struct FlowBarIllustration: View {
     }
 
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 30)) { timeline in
+        TimelineView(.animation(minimumInterval: 1 / 20)) { timeline in
             let t = timeline.date.timeIntervalSinceReferenceDate
             let levels: [CGFloat] = (0..<13).map { Self.level(index: $0, time: t) }
             ZStack {

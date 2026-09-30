@@ -78,6 +78,8 @@ final class Sounds {
         players[.error] = Self.makePlayer(notes: [(311, 0.09), (233, 0.14)], gain: 0.45)
     }
 
+    var isLoaded: Bool { players.count == 4 && players.values.allSatisfy { $0.duration > 0.05 } }
+
     func play(_ kind: Kind, volume: Double) {
         guard let player = players[kind] else { return }
         player.volume = Float(volume)

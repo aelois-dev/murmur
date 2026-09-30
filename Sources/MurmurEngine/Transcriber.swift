@@ -93,6 +93,7 @@ public actor Transcriber {
         guard AudioAnalysis.hasSpeech(samples) else {
             return TranscriptionOutput(text: "", language: language, seconds: Date().timeIntervalSince(start))
         }
+        let samples = AudioAnalysis.normalized(samples)
         var promptTokens: [Int]?
         if let prompt, !prompt.isEmpty, let tokenizer = whisper.tokenizer {
             let limit = tokenizer.specialTokens.specialTokenBegin
@@ -154,6 +155,14 @@ public enum AudioAnalysis {
         let threshold = max(0.004, noiseFloor * 3)
         let voiced = energies.filter { $0 > threshold }.count
         return Double(voiced) * 0.02
+    }
+
+    /// Boosts quiet recordings (whispering, distant mic) so the speech model hears them clearly.
+    public static func normalized(_ samples: [Float]) -> [Float] {
+        let peak = samples.reduce(0) { max($0, abs($1)) }
+        guard peak > 0.0005, peak < 0.25 else { return samples }
+        let gain = min(12, 0.5 / peak)
+        return samples.map { $0 * gain }
     }
 
     public static func hasSpeech(_ samples: [Float]) -> Bool {

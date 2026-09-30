@@ -114,7 +114,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
 
     private func updateActivationPolicy(forceRegular: Bool = false) {
         let anyWindow = (hubWindow?.isVisible ?? false) || (onboardingWindow?.isVisible ?? false)
-        let regular = model.settings.showInDock && (forceRegular || anyWindow)
+        // "Show in Dock" keeps the icon; otherwise it only appears while a Murmur window is open.
+        let regular = model.settings.showInDock || forceRegular || anyWindow
         NSApp.setActivationPolicy(regular ? .regular : .accessory)
     }
 

@@ -1,6 +1,11 @@
+PASS mic conversion 48000Hz x1: samples=15696 expected≈15701 rms=0.212
+PASS mic conversion 44100Hz x2: samples=15969 expected≈15975 rms=0.212
+PASS mic conversion 16000Hz x1: samples=15360 expected≈15360 rms=0.212
+PASS mic conversion 24000Hz x1: samples=15690 expected≈15701 rms=0.212
+PASS sounds loaded: players ready: true
 PASS push-to-talk recording state: phase while held: true
 PASS push-to-talk paste: text="So I think we should meet tomorrow at noon."
-PASS clipboard restored: clipboard="murmur-clipboard-sentinel-421522"
+PASS clipboard restored: clipboard="murmur-clipboard-sentinel-CC7898"
 PASS smart spacing + backtrack: text="So I think we should meet tomorrow at noon. Let\'s do coffee at 3."
 PASS hands-free locked after double-tap: phase: true
 PASS hands-free paste: text="What\'s the capital of France?"
@@ -8,4 +13,4 @@ PASS quick tap dismissed: text=""
 PASS escape cancels: text="" notice=Transcript cancelled
 PASS command mode state: phase: true
 PASS command mode rewrite: text="Hello, how are you? Could you please send me the report by tomorrow?"
-RESULT 10/10 passed
+RESULT 15/15 passed

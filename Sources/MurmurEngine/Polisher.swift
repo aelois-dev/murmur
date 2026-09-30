@@ -258,7 +258,8 @@ public struct TextPipeline: Sendable {
         var aiEdited = false
         var rejected: String?
         var aiSeconds = 0.0
-        if settings.aiEditing, let polisher, TextStats.wordCount(text) >= 3 {
+        let words = TextStats.wordCount(text)
+        if settings.aiEditing, let polisher, words >= 3, words <= 500 {
             let start = Date()
             let context = EditContext(appName: settings.contextAwareness ? appName : nil, category: category,
                                       dictionary: dictionary.map(\.word), language: settings.language)

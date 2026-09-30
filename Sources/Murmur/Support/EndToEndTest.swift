@@ -1,6 +1,8 @@
 import AppKit
+import AVFoundation
 import Carbon.HIToolbox
 import MurmurCore
+import MurmurEngine
 
 /// `--e2e <audio dir>`: drives the real app like a user would — synthetic fn key presses through the
 /// system event stream, injected audio, and a real text view that receives the ⌘V paste.
@@ -25,6 +27,29 @@ enum EndToEndTest {
                 finish(["FAIL hotkey monitor not running (no Accessibility)"], passed: 0, total: 1, dir: audioDirectory)
                 return
             }
+
+            // 0. Microphone conversion path with typical device formats, and UI sounds.
+            for (rate, channels) in [(48000.0, 1), (44100.0, 2), (16000.0, 1), (24000.0, 1)] {
+                let format = AVAudioFormat(commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: AVAudioChannelCount(channels), interleaved: false)!
+                var buffers: [AVAudioPCMBuffer] = []
+                var phase = 0.0
+                for _ in 0..<Int(rate / 1024) { // ~1 second in 1024-frame chunks, like the tap
+                    let b = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: 1024)!
+                    b.frameLength = 1024
+                    for i in 0..<1024 {
+                        let v = Float(sin(phase) * 0.3)
+                        phase += 2 * .pi * 440 / rate
+                        for c in 0..<channels { b.floatChannelData![c][i] = v }
+                    }
+                    buffers.append(b)
+                }
+                let out = AudioRecorder().convertForTest(buffers)
+                let expected = Double(buffers.count * 1024) / rate * 16000
+                let rms = AudioAnalysis.rms(out[...])
+                check("mic conversion \(Int(rate))Hz x\(channels)", abs(Double(out.count) - expected) < 1600 && rms > 0.15 && rms < 0.25,
+                      "samples=\(out.count) expected≈\(Int(expected)) rms=\(String(format: "%.3f", rms))")
+            }
+            check("sounds loaded", Sounds.shared.isLoaded, "players ready: \(Sounds.shared.isLoaded)")
 
             // A real window with a text view to type into.
             let window = NSWindow(contentRect: NSRect(x: 200, y: 300, width: 640, height: 320), styleMask: [.titled], backing: .buffered, defer: false)
