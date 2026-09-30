@@ -8,9 +8,14 @@ INSTALL="${2:-}"
 VERSION="1.0.0"
 BUILD_NUMBER="$(git rev-list --count HEAD 2>/dev/null || echo 1)"
 
-swift build -c "$CONFIG" --product Murmur 2>&1 | grep -E "error|warning: unre|Compiling|Build complete" | grep -v "^$" || true
+BUILD_LOG="$(mktemp)"
+if ! swift build -c "$CONFIG" --product Murmur > "$BUILD_LOG" 2>&1; then
+  grep -E "error" "$BUILD_LOG" | head -40
+  echo "BUILD FAILED"
+  exit 1
+fi
+rm -f "$BUILD_LOG"
 BIN_DIR="$(swift build -c "$CONFIG" --show-bin-path)"
-test -x "$BIN_DIR/Murmur" || { echo "build failed"; exit 1; }
 
 APP="build/Murmur.app"
 rm -rf "$APP"

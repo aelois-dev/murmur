@@ -37,7 +37,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             DispatchQueue.main.async { self?.updateStatusIcon() }
         }.store(in: &cancellables)
 
-        if let i = CommandLine.arguments.firstIndex(of: "--selftest"), i + 1 < CommandLine.arguments.count {
+        if let i = CommandLine.arguments.firstIndex(of: "--e2e"), i + 1 < CommandLine.arguments.count {
+            EndToEndTest.run(audioDirectory: URL(fileURLWithPath: CommandLine.arguments[i + 1]), model: model, controller: controller)
+        } else if let i = CommandLine.arguments.firstIndex(of: "--selftest"), i + 1 < CommandLine.arguments.count {
             SelfTest.run(casesPath: CommandLine.arguments[i + 1], model: model, controller: controller)
         } else if model.settings.hasCompletedOnboarding {
             showHub()

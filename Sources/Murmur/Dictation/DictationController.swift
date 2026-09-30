@@ -110,7 +110,7 @@ final class DictationController {
         default: break
         }
         model.refreshPermissions()
-        guard model.micAuthorized else {
+        guard model.micAuthorized || AudioRecorder.injectedSamples != nil else {
             abortStart("Murmur needs microphone access", action: ("Allow", .openMicrophone))
             model.requestMicrophone()
             return

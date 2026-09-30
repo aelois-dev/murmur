@@ -27,8 +27,16 @@ final class AudioRecorder: @unchecked Sendable {
     /// Called on the audio thread with the RMS level of each buffer.
     var onLevel: ((Float) -> Void)?
 
+    /// End-to-end tests inject audio here instead of using the microphone.
+    static var injectedSamples: [Float]?
+
     func start(deviceUID: String?) throws {
         if isRecording { return }
+        if Self.injectedSamples != nil {
+            isRecording = true
+            startedAt = Date()
+            return
+        }
         let engine = AVAudioEngine()
         let input = engine.inputNode
 
@@ -88,6 +96,10 @@ final class AudioRecorder: @unchecked Sendable {
     /// Stops recording and returns the captured 16 kHz samples.
     func stop() -> [Float] {
         guard isRecording else { return [] }
+        if let injected = Self.injectedSamples {
+            isRecording = false
+            return injected
+        }
         engine?.inputNode.removeTap(onBus: 0)
         engine?.stop()
         engine = nil
