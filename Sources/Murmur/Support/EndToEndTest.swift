@@ -146,6 +146,18 @@ enum EndToEndTest {
             check("hands-free paste", textView.string == "What's the capital of France?", "text=\(textView.string.debugDescription)")
 
             guard await ensureFocus() else { log.append("ABORT lost focus"); finish(log, passed: passed, total: total + 1, dir: audioDirectory); return }
+            // 3b. ⌃⌘V pastes the last transcript again.
+            textView.string = ""
+            if safeToType, let v = CGEvent(keyboardEventSource: nil, virtualKey: CGKeyCode(kVK_ANSI_V), keyDown: true),
+               let vUp = CGEvent(keyboardEventSource: nil, virtualKey: CGKeyCode(kVK_ANSI_V), keyDown: false) {
+                v.flags = [.maskControl, .maskCommand]
+                vUp.flags = [.maskControl, .maskCommand]
+                v.post(tap: .cghidEventTap)
+                vUp.post(tap: .cghidEventTap)
+            }
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            check("paste last transcript (⌃⌘V)", textView.string == "What's the capital of France?", "text=\(textView.string.debugDescription)")
+
             // 4. Quick tap is ignored.
             textView.string = ""
             AudioRecorder.injectedSamples = samples("06_question.wav")

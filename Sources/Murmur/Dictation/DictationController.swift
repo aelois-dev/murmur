@@ -94,6 +94,10 @@ final class DictationController {
         case .commandModifier: send(.commandModifierDown)
         case .escape: send(.escape)
         case .otherKey: send(.otherKeyPressed)
+        case .pasteLast:
+            guard model.lastTranscript != nil, !machine.isRecording else { return false }
+            // Let the ⌃ and ⌘ keys come up first so they don't combine with our ⌘V.
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in self?.pasteLastTranscript() }
         }
         return true
     }

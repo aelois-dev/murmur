@@ -157,7 +157,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         menu.addItem(.separator())
         menu.addItem(item("Open Murmur", #selector(openHub), key: "o"))
         menu.addItem(item(model.phase.isActive ? "Stop Dictation" : "Start Hands-Free Dictation", #selector(toggleHandsFree)))
-        let paste = item("Paste Last Transcript", #selector(pasteLast))
+        let paste = item("Paste Last Transcript (⌃⌘V)", #selector(pasteLast))
         paste.isEnabled = model.lastTranscript != nil
         menu.addItem(paste)
         let copy = item("Copy Last Transcript", #selector(copyLast))

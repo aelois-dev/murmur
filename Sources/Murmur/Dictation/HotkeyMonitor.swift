@@ -5,7 +5,7 @@ import MurmurCore
 /// Listens for the dictation shortcuts system-wide with a CGEvent tap (needs Accessibility permission).
 final class HotkeyMonitor {
     enum Signal {
-        case pttDown, pttUp, handsFree, commandModifier, escape, otherKey
+        case pttDown, pttUp, handsFree, commandModifier, escape, otherKey, pasteLast
     }
 
     /// Returns true if the key event should be swallowed.
@@ -83,7 +83,8 @@ final class HotkeyMonitor {
         let isDown: Bool
         switch hotkey {
         case .fn:
-            guard keyCode == kVK_Function || flags.contains(.maskSecondaryFn) != pttDown else { return checkCommandModifier(flags) }
+            // Only the fn/Globe key itself counts: arrow and function keys also carry the "secondary fn" flag.
+            guard keyCode == kVK_Function else { return checkCommandModifier(flags) }
             isDown = flags.contains(.maskSecondaryFn)
         case .rightOption, .rightCommand, .rightControl:
             // Device-dependent bits tell the right-hand modifier apart from the left one.
@@ -134,6 +135,11 @@ final class HotkeyMonitor {
             if !isRepeat { _ = handler?(.escape) }
             swallowNextEscapeUp = true
             return nil
+        }
+        // ⌃⌘V pastes the last transcript (like Flow).
+        if keyCode == kVK_ANSI_V && !isRepeat && event.flags.contains(.maskControl) && event.flags.contains(.maskCommand)
+            && !event.flags.contains(.maskAlternate) && !event.flags.contains(.maskShift) {
+            if handler?(.pasteLast) == true { return nil }
         }
         if pttDown {
             if keyCode == kVK_Space && handsFreeWithSpace {

@@ -31,6 +31,9 @@ struct SettingsView: View {
                 SettingsRow(title: "Command Mode", detail: "Select text, hold \(model.settings.pushToTalkKey.commandModifierLabel) and say what to change — “make this more concise”, “translate to Spanish”.") {
                     Toggle("", isOn: $model.settings.commandModeEnabled).labelsHidden().toggleStyle(.switch).tint(Theme.accent)
                 }
+                SettingsRow(title: "Paste last transcript", detail: "Inserts your most recent dictation again.") {
+                    ShortcutLabel(keys: ["⌃", "⌘", "V"])
+                }
                 if model.settings.pushToTalkKey == .fn {
                     SettingsRow(title: "Globe key", detail: globeUsage == 0 ? "Set to “Do Nothing” — perfect." : "Currently set to “\(Permissions.globeKeyDescription)”. Set “Press 🌐 key to” to “Do Nothing” in Keyboard settings so fn doesn't also open that.") {
                         if globeUsage == 0 {
