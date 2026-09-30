@@ -224,7 +224,8 @@ final class DictationController {
             let category = AppCategory.category(forBundleID: target.bundleID, appName: target.name)
             let output = await Task.detached(priority: .userInitiated) {
                 TextPipeline.process(raw: transcript.text, settings: settings, dictionary: dictionary, snippets: snippets,
-                                     category: category, appName: target.name, polisher: polisher, textBefore: textBefore)
+                                     category: category, appName: target.name, polisher: polisher, textBefore: textBefore,
+                                     detectedLanguage: transcript.language)
             }.value
             return SpeculativeResult(transcript: transcript, output: output)
         }
@@ -342,7 +343,8 @@ final class DictationController {
             } else {
                 computed = await Task.detached(priority: .userInitiated) {
                     TextPipeline.process(raw: transcript.text, settings: settings, dictionary: dictionary, snippets: snippets,
-                                         category: category, appName: target.name, polisher: polisher, textBefore: textBefore)
+                                         category: category, appName: target.name, polisher: polisher, textBefore: textBefore,
+                                         detectedLanguage: transcript.language)
                 }.value
             }
             let output = computed

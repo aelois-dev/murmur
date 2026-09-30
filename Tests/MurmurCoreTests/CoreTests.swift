@@ -319,3 +319,21 @@ import Testing
         #expect(AudioAnalysis.hasSpeech(noise(0.3, amp: 0.001) + tone(0.6, amp: 0.2)))
     }
 }
+
+@Suite struct CJKTests {
+    @Test func punctuation() {
+        #expect(CJK.normalizePunctuation("我们明天下午3点开会,讨论一下新产品的发布计划.") == "我们明天下午3点开会，讨论一下新产品的发布计划。")
+        #expect(CJK.normalizePunctuation("Version 3.5 is out.") == "Version 3.5 is out.")
+        #expect(CJK.normalizePunctuation("你好吗?") == "你好吗？")
+    }
+
+    @Test func counting() {
+        #expect(TextStats.wordCount("我们明天开会") == 6)
+        #expect(TextStats.wordCount("Hello 世界") == 3)
+        #expect(WordErrorRate.compute(reference: "我们三点开会", hypothesis: "我们3点开会") > 0)
+    }
+
+    @Test func cleanerKeepsChinese() {
+        #expect(TextCleaner().clean("我们明天下午3点开会,讨论一下新产品的发布计划。") == "我们明天下午3点开会，讨论一下新产品的发布计划。")
+    }
+}

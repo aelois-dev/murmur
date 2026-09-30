@@ -41,14 +41,15 @@ The models are already downloaded and prepared, so dictation works straight away
 - **Learns from corrections**: if you fix a name or term Murmur typed, it's added to your Dictionary automatically. Ordinary words are never added.
 - **Fast**: Murmur starts transcribing during your natural pause before you release the key, so text usually appears about 0.2 s after you let go (about 0.6–1.3 s if you release mid-sentence).
 - **Clipboard**: text is inserted via a brief paste, and your clipboard is restored half a second later.
-- Microphone picker, 100+ languages (auto-detect), quiet/whisper boost, sound effects, optional mute-while-dictating, launch at login.
+- **Languages**: 100+ with auto-detect. Chinese is tested: it gets full-width punctuation and AI cleanup that keeps it in Chinese. Long dictations (30 s and up) are chunked automatically.
+- Microphone picker, quiet/whisper boost, sound effects, optional mute-while-dictating, launch at login.
 
 ## Test results from the overnight build
 
-- **Unit tests**: 43/43 (`swift test`), covering text cleanup, styles, snippets, dictionary, correction learning, stats, audio analysis and the shortcut state machine.
+- **Unit tests**: 46/46 (`swift test`), covering text cleanup, styles, snippets, dictionary, correction learning, stats, audio analysis and the shortcut state machine.
 - **Speech accuracy**: 2% word error rate on synthetic test recordings, about 0.9 s per clip.
 - **AI cleanup**: 22/24 tricky cases exact with Qwen3 4B (all 20 base cases, plus 2 of 4 context cases), about 0.48 s each. The 1.7B model scores 17/20 on the base cases at 0.22 s. Guardrails catch prompt-injection attempts and echoed context.
-- **In-app pipeline**: 11/11 recordings exact, about 1.35 s from key release to text.
+- **In-app pipeline**: 11/11 recordings exact (about 1.3 s without the pause trick). A 34-second multi-paragraph update came out word-perfect, and a Chinese sentence was correct with full-width punctuation.
 - **End-to-end** (real system key events, real paste into a live text field): 19/19. Covers hold-to-talk, about 0.2 s release-to-text after a pause, smart spacing, backtrack, double-tap hands-free, ⌃⌘V, quick-tap dismissal, Esc cancel, context spelling, auto-learning, Command Mode, clipboard restore, mic format conversion and sounds.
 - **Idle CPU**: about 0.6% in the background.
 

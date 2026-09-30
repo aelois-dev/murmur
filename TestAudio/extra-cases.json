@@ -1,0 +1,13 @@
+[
+  {
+    "file": "long_update.wav",
+    "text": "Hi team, quick update on the launch. Um, so the beta went out on Monday and we got a lot of great feedback. The biggest issue is that onboarding takes too long, uh, most people drop off at the permissions step. I think we should, we should simplify that screen and add a short video. Also the pricing page needs work, the annual plan isn't clear at all. Let's meet on Thursday at 2, actually 3, to go through the plan. Thanks everyone, talk soon. One more thing, please send me your notes by Friday so I can, um, put the deck together.",
+    "expected": "Hi team, quick update on the launch. So the beta went out on Monday and we got a lot of great feedback. The biggest issue is that onboarding takes too long; most people drop off at the permissions step. I think we should simplify that screen and add a short video. Also, the pricing page needs work; the annual plan isn't clear at all. Let's meet on Thursday at 3 to go through the plan. Thanks, everyone, talk soon. One more thing, please send me your notes by Friday so I can put the deck together."
+  },
+  {
+    "file": "zh_meeting.wav",
+    "text": "我们明天下午三点开会，讨论一下新产品的发布计划。",
+    "expected": "我们明天下午3点开会，讨论一下新产品的发布计划。",
+    "language": "auto"
+  }
+]

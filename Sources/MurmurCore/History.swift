@@ -42,7 +42,7 @@ public struct DictationRecord: Codable, Identifiable, Equatable, Sendable {
 
 public enum TextStats {
     public static func wordCount(_ text: String) -> Int {
-        text.split(whereSeparator: { $0.isWhitespace || $0.isNewline }).filter { $0.contains(where: { $0.isLetter || $0.isNumber }) }.count
+        CJK.spaced(text).split(whereSeparator: { $0.isWhitespace || $0.isNewline }).filter { $0.contains(where: { $0.isLetter || $0.isNumber }) }.count
     }
 }
 

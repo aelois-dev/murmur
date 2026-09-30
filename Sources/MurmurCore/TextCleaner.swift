@@ -22,6 +22,7 @@ public struct TextCleaner: Sendable {
         if formatLists { text = Self.formatNumberedLists(text) }
         text = Self.fixPunctuationSpacing(text)
         text = Self.capitalizeSentences(text)
+        text = CJK.normalizePunctuation(text)
         return text.trimmingCharacters(in: .whitespacesAndNewlines)
     }
 

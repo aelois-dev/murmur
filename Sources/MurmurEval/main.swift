@@ -13,6 +13,8 @@ struct AudioCase: Codable {
     var file: String
     var text: String
     var expected: String?
+    /// "auto" = let the model detect the language; default English.
+    var language: String?
 }
 
 struct TextCase: Codable {
@@ -89,14 +91,16 @@ case "stt", "e2e":
     for c in cases {
         let samples = try loadSamples(dir.appendingPathComponent(c.file).path)
         let audioSeconds = Double(samples.count) / 16000
-        let out = try await transcriber.transcribe(samples, language: "en")
+        let language: String? = c.language == "auto" ? nil : (c.language ?? "en")
+        let out = try await transcriber.transcribe(samples, language: language)
         let wer = WordErrorRate.compute(reference: c.text, hypothesis: out.text)
         totalWER += wer; totalSTT += out.seconds; totalAudio += audioSeconds
         print("\n[\(c.file)] audio \(fmt(audioSeconds))s  stt \(fmt(out.seconds))s  WER \(fmt(wer))")
         print("  heard: \(out.text)")
         if args[1] == "e2e" {
             let t0 = Date()
-            let result = TextPipeline.process(raw: out.text, settings: settings, dictionary: [], snippets: [], category: .other, appName: nil, polisher: polisher)
+            let result = TextPipeline.process(raw: out.text, settings: settings, dictionary: [], snippets: [], category: .other, appName: nil, polisher: polisher,
+                                              detectedLanguage: out.language)
             let dt = Date().timeIntervalSince(t0)
             totalText += dt
             let expected = c.expected ?? c.text
