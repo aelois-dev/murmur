@@ -6,6 +6,7 @@ import SwiftUI
 struct OnboardingView: View {
     @EnvironmentObject var model: AppModel
     var onFinish: () -> Void
+    var initialStep = 0
     @State private var step = 0
     @State private var practice = ""
     @State private var globeUsage = Permissions.globeKeyUsage
@@ -57,8 +58,10 @@ struct OnboardingView: View {
         .foregroundStyle(Theme.ink)
         .onReceive(Timer.publish(every: 1, on: .main, in: .common).autoconnect()) { _ in
             model.refreshPermissions()
-            globeUsage = Permissions.globeKeyUsage
+            let usage = Permissions.globeKeyUsage
+            if usage != globeUsage { globeUsage = usage }
         }
+        .onAppear { step = initialStep }
     }
 
     // MARK: Steps
@@ -120,7 +123,9 @@ struct OnboardingView: View {
                         VStack(alignment: .leading, spacing: 6) {
                             Text(globeUsage == 0 ? "The 🌐 key is ready" : "Set the 🌐 key to “Do Nothing”")
                                 .font(.system(size: 13, weight: .semibold))
-                            Text(globeUsage == 0 ? "Pressing fn won't open anything else." : "Right now fn also triggers “\(Permissions.globeKeyDescription)”. In Keyboard settings, set “Press 🌐 key to” → “Do Nothing”.")
+                            Text(globeUsage == 0 ? "Pressing fn won't open anything else." : globeUsage == 1
+                                 ? "Right now fn also switches input source. Murmur switches it back after each dictation, and a quick tap still switches as usual — but for the smoothest experience set “Press 🌐 key to” → “Do Nothing” (switch sources with ⌃Space), or pick another key above."
+                                 : "Right now fn also triggers “\(Permissions.globeKeyDescription)”, which will get in the way. In Keyboard settings, set “Press 🌐 key to” → “Do Nothing”, or pick another key above.")
                                 .font(.system(size: 12))
                                 .foregroundStyle(Theme.secondary)
                                 .fixedSize(horizontal: false, vertical: true)

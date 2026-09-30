@@ -129,7 +129,7 @@ struct ReadinessCard: View {
                         ProgressView().controlSize(.small)
                         Text("Preparing speech model…").font(.system(size: 11, weight: .medium))
                     }
-                    Text("First launch can take a minute.").font(.system(size: 11)).foregroundStyle(Theme.secondary)
+                    Text("The first launch can take a few minutes.").font(.system(size: 11)).foregroundStyle(Theme.secondary)
                 case .notDownloaded, .failed:
                     Text(model.whisperStatus.label).font(.system(size: 12, weight: .semibold))
                     Button("Download") { model.loadWhisper() }.buttonStyle(PillButtonStyle(kind: .primary, compact: true))

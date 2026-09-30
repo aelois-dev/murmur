@@ -26,8 +26,12 @@ enum Snapshotter {
         model.hubSection = .settings
         render(SettingsView().environmentObject(model).frame(width: 784).background(Theme.background), size: NSSize(width: 784, height: 2300), appearance: light,
                to: outputDirectory.appendingPathComponent("settings-full.png"))
-        render(OnboardingView(onFinish: {}).environmentObject(model), size: NSSize(width: 760, height: 560), appearance: light,
-               to: outputDirectory.appendingPathComponent("onboarding.png"))
+        model.micAuthorized = false
+        model.accessibilityTrusted = false
+        for step in 0..<5 {
+            render(OnboardingView(onFinish: {}, initialStep: step).environmentObject(model), size: NSSize(width: 760, height: 560),
+                   appearance: NSAppearance(named: .darkAqua)!, to: outputDirectory.appendingPathComponent("onboarding-\(step).png"))
+        }
 
         let actions = FlowBarActions(click: {}, stop: {}, cancel: {}, notice: { _ in })
         let states: [(String, DictationPhase, Bool, FlowNotice?)] = [
