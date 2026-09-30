@@ -1,0 +1,6 @@
+.build/
+.swiftpm/
+build/
+*.xcframework/**/dSYMs/
+TestAudio/*.wav
+.DS_Store
