@@ -1,9 +1,9 @@
 {
   "cases" : 11,
   "exact" : 11,
-  "llmReadySeconds" : 5.3330469131469727,
+  "llmReadySeconds" : 5.3330789804458618,
   "llmStatus" : "Ready",
-  "meanSeconds" : 1.2685522599653765,
+  "meanSeconds" : 1.2747219042344526,
   "results" : [
     {
       "aiEdited" : true,
@@ -12,7 +12,7 @@
       "file" : "01_simple.wav",
       "heard" : "Hey, can you send me the quarterly report by Friday? Thanks.",
       "output" : "Hey, can you send me the quarterly report by Friday? Thanks.",
-      "seconds" : 1.3467519283294678,
+      "seconds" : 1.3580619096755981,
       "similarity" : 1
     },
     {
@@ -22,7 +22,7 @@
       "file" : "02_fillers.wav",
       "heard" : "Um, so I think we should, uh, meet tomorrow at noon.",
       "output" : "So I think we should meet tomorrow at noon.",
-      "seconds" : 1.2526350021362305,
+      "seconds" : 1.2641019821166992,
       "similarity" : 1
     },
     {
@@ -32,7 +32,7 @@
       "file" : "03_backtrack.wav",
       "heard" : "Let's do coffee at 2, actually 3.",
       "output" : "Let's do coffee at 3.",
-      "seconds" : 1.1870399713516235,
+      "seconds" : 1.1840760707855225,
       "similarity" : 1
     },
     {
@@ -42,7 +42,7 @@
       "file" : "04_list.wav",
       "heard" : "My top goals this week are 1. Finish the report. 2. Send the presentation. 3. Book the flights.",
       "output" : "My top goals this week are:\n1. Finish the report\n2. Send the presentation\n3. Book the flights",
-      "seconds" : 1.5674149990081787,
+      "seconds" : 1.5866079330444336,
       "similarity" : 1
     },
     {
@@ -52,7 +52,7 @@
       "file" : "05_punct.wav",
       "heard" : "I can't wait to see you! Let's meet at 7.",
       "output" : "I can't wait to see you! Let's meet at 7.",
-      "seconds" : 1.3330919742584229,
+      "seconds" : 1.3332029581069946,
       "similarity" : 1
     },
     {
@@ -62,7 +62,7 @@
       "file" : "06_question.wav",
       "heard" : "What's the capital of France?",
       "output" : "What's the capital of France?",
-      "seconds" : 1.1232739686965942,
+      "seconds" : 1.1352759599685669,
       "similarity" : 1
     },
     {
@@ -72,7 +72,7 @@
       "file" : "07_instruction.wav",
       "heard" : "Write a short poem about the ocean.",
       "output" : "Write a short poem about the ocean.",
-      "seconds" : 1.155919075012207,
+      "seconds" : 1.1430010795593262,
       "similarity" : 1
     },
     {
@@ -82,7 +82,7 @@
       "file" : "08_long.wav",
       "heard" : "the new release makes on-device transcription really fast, and the latency is under a second on most Macs, which honestly feels like magic when you're writing long emails.",
       "output" : "The new release makes on-device transcription really fast, and the latency is under a second on most Macs, which honestly feels like magic when you're writing long emails.",
-      "seconds" : 2.0835189819335938,
+      "seconds" : 2.0889670848846436,
       "similarity" : 1
     },
     {
@@ -92,7 +92,7 @@
       "file" : "09_scratch.wav",
       "heard" : "Please add milk, eggs and bread to the shopping list. Scratch that. Just add milk.",
       "output" : "Just add milk.",
-      "seconds" : 1.2312359809875488,
+      "seconds" : 1.2501770257949829,
       "similarity" : 1
     },
     {
@@ -102,7 +102,7 @@
       "file" : "10_paragraph.wav",
       "heard" : "Hi Sarah, new paragraph I wanted to follow up on our conversation from yesterday about the product launch.",
       "output" : "Hi Sarah,\n\nI wanted to follow up on our conversation from yesterday about the product launch.",
-      "seconds" : 1.6731929779052734,
+      "seconds" : 1.6784689426422119,
       "similarity" : 1
     },
     {
@@ -116,6 +116,6 @@
       "similarity" : 1
     }
   ],
-  "whisperReadySeconds" : 5.3330129384994507,
+  "whisperReadySeconds" : 5.3330540657043457,
   "whisperStatus" : "Ready"
 }

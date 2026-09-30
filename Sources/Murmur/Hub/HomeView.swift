@@ -256,6 +256,9 @@ struct HistoryRow: View {
                     .textSelection(.enabled)
                     .fixedSize(horizontal: false, vertical: true)
                 HStack(spacing: 6) {
+                    if let icon = AppIconCache.icon(for: record.appBundleID) {
+                        Image(nsImage: icon).resizable().frame(width: 13, height: 13)
+                    }
                     if let app = record.appName { Text(app) }
                     if record.aiEdited { Text("·"); Text("AI edited") }
                     if record.insertionFailed { Text("·"); Text("Copied to clipboard") }
@@ -324,5 +327,22 @@ struct SearchField: View {
         .padding(.vertical, 6)
         .background(Capsule().fill(Theme.card))
         .overlay(Capsule().strokeBorder(Theme.border))
+    }
+}
+
+/// Small app icons for history rows, looked up once per bundle id.
+@MainActor
+enum AppIconCache {
+    private static var cache: [String: NSImage?] = [:]
+
+    static func icon(for bundleID: String?) -> NSImage? {
+        guard let bundleID, !bundleID.isEmpty else { return nil }
+        if let cached = cache[bundleID] { return cached }
+        var image: NSImage?
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: bundleID) {
+            image = NSWorkspace.shared.icon(forFile: url.path)
+        }
+        cache[bundleID] = image
+        return image
     }
 }

@@ -63,14 +63,14 @@ enum Snapshotter {
     static func seedDemoData(_ model: AppModel) {
         guard model.history.isEmpty else { return }
         let now = Date()
-        let samples: [(Double, String, String, Bool)] = [
-            (-300, "Hey Sarah, I'll send over the deck by end of day. Let me know if the numbers on slide 4 look right to you.", "Slack", true),
-            (-4000, "Remind me to book flights for the offsite and check if Jon can join the Thursday call.", "Notes", true),
-            (-90000, "My top goals this week are:\n1. Finish the report\n2. Send the presentation\n3. Book the flights", "Notion", true),
-            (-95000, "Thanks so much for the intro! Happy to find time next week — does Tuesday at 3 work?", "Mail", false),
+        let samples: [(Double, String, String, String, Bool)] = [
+            (-300, "Hey Sarah, I'll send over the deck by end of day. Let me know if the numbers on slide 4 look right to you.", "WhatsApp", "net.whatsapp.WhatsApp", true),
+            (-4000, "Remind me to book flights for the offsite and check if Jon can join the Thursday call.", "Notes", "com.apple.Notes", true),
+            (-90000, "My top goals this week are:\n1. Finish the report\n2. Send the presentation\n3. Book the flights", "TextEdit", "com.apple.TextEdit", true),
+            (-95000, "Thanks so much for the intro! Happy to find time next week — does Tuesday at 3 work?", "Safari", "com.apple.Safari", false),
         ]
-        for (offset, text, app, ai) in samples {
-            model.addHistory(DictationRecord(date: now.addingTimeInterval(offset), rawText: text, text: text, appName: app, appBundleID: app,
+        for (offset, text, app, bundle, ai) in samples {
+            model.addHistory(DictationRecord(date: now.addingTimeInterval(offset), rawText: text, text: text, appName: app, appBundleID: bundle,
                                              audioDuration: Double(text.split(separator: " ").count) / 2.6, processingTime: 0.8, aiEdited: ai))
         }
         model.dictionary = [DictionaryEntry(word: "WhisperKit"), DictionaryEntry(word: "Siobhan", replacing: ["shivon"]), DictionaryEntry(word: "Qwen", autoLearned: true)]
