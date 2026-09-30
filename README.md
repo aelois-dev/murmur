@@ -24,6 +24,7 @@ The models are already downloaded and prepared, so dictation works straight away
 | Hands-free | **Double-tap fn**, or **fn + Space**, or click the Flow bar. Tap fn again (or click ■) to finish |
 | Command Mode | Select text, hold **fn + ⌃**, say an instruction ("make this more formal", "translate to Spanish"), release |
 | Cancel | **Esc** while recording, or click ✕. The notice offers *Undo* |
+| Paste last transcript | **⌃⌘V** |
 
 ## What it does
 
@@ -35,17 +36,21 @@ The models are already downloaded and prepared, so dictation works straight away
 - **Dictionary**: names and jargon you add are passed to the speech model as hints and corrected automatically.
 - **Snippets**: say a cue ("my calendar link") and get the full text.
 - **History and stats**: every transcript, grouped by day, plus your streak, total words and words per minute.
-- **Smart spacing**: a space is added automatically when you continue after existing text.
+- **Smart spacing and continuation**: a space is added when you continue after existing text, and a sentence you're continuing doesn't get a stray capital.
+- **Context awareness**: the app you're in and the text just before your cursor help spell names correctly. If "Siobhan" is already in the email, you get "Siobhan", not "Shivon".
+- **Learns from corrections**: if you fix a name or term Murmur typed, it's added to your Dictionary automatically. Ordinary words are never added.
+- **Fast**: Murmur starts transcribing during your natural pause before you release the key, so text usually appears about 0.2 s after you let go (about 0.6–1.3 s if you release mid-sentence).
 - **Clipboard**: text is inserted via a brief paste, and your clipboard is restored half a second later.
 - Microphone picker, 100+ languages (auto-detect), quiet/whisper boost, sound effects, optional mute-while-dictating, launch at login.
 
 ## Test results from the overnight build
 
-- **Unit tests**: 33/33 (`swift test`), covering text cleanup, styles, snippets, dictionary, stats and the shortcut state machine.
+- **Unit tests**: 43/43 (`swift test`), covering text cleanup, styles, snippets, dictionary, correction learning, stats, audio analysis and the shortcut state machine.
 - **Speech accuracy**: 2% word error rate on synthetic test recordings, about 0.9 s per clip.
-- **AI cleanup**: 20/20 tricky cases exact with Qwen3 4B, about 0.47 s each. The 1.7B model scores 17/20 at 0.22 s.
+- **AI cleanup**: 22/24 tricky cases exact with Qwen3 4B (all 20 base cases, plus 2 of 4 context cases), about 0.48 s each. The 1.7B model scores 17/20 on the base cases at 0.22 s. Guardrails catch prompt-injection attempts and echoed context.
 - **In-app pipeline**: 11/11 recordings exact, about 1.35 s from key release to text.
-- **End-to-end** (real system key events, real paste into a live text field): 15/15. Covers hold-to-talk, smart spacing, backtrack, double-tap hands-free, quick-tap dismissal, Esc cancel, Command Mode, clipboard restore, mic format conversion and sounds.
+- **End-to-end** (real system key events, real paste into a live text field): 19/19. Covers hold-to-talk, about 0.2 s release-to-text after a pause, smart spacing, backtrack, double-tap hands-free, ⌃⌘V, quick-tap dismissal, Esc cancel, context spelling, auto-learning, Command Mode, clipboard restore, mic format conversion and sounds.
+- **Idle CPU**: about 0.6% in the background.
 
 ## Good to know
 
