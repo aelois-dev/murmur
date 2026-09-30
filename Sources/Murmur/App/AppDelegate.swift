@@ -37,7 +37,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             DispatchQueue.main.async { self?.updateStatusIcon() }
         }.store(in: &cancellables)
 
-        if model.settings.hasCompletedOnboarding {
+        if let i = CommandLine.arguments.firstIndex(of: "--selftest"), i + 1 < CommandLine.arguments.count {
+            SelfTest.run(casesPath: CommandLine.arguments[i + 1], model: model, controller: controller)
+        } else if model.settings.hasCompletedOnboarding {
             showHub()
         } else {
             showOnboarding()

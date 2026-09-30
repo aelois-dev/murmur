@@ -14,6 +14,10 @@ final class DictationController {
     private var target = TargetApp()
     private var cancelled: (samples: [Float], target: TargetApp, mode: RecordingMode)?
     private var processingTask: Task<Void, Never>?
+    private let inputSourceGuard = InputSourceGuard()
+    /// Self-test hook: receives the final text instead of pasting it (no clipboard or history side effects).
+    var dryRunSink: ((DictationRecord) -> Void)?
+    private var dryRunResult: DictationRecord?
 
     init(model: AppModel) {
         self.model = model
@@ -60,7 +64,9 @@ final class DictationController {
 
     private func handle(_ signal: HotkeyMonitor.Signal) -> Bool {
         switch signal {
-        case .pttDown: send(.pttDown)
+        case .pttDown:
+            if model.settings.pushToTalkKey == .fn && !machine.isRecording { inputSourceGuard.remember() }
+            send(.pttDown)
         case .pttUp: send(.pttUp)
         case .handsFree: send(.handsFreeShortcut)
         case .commandModifier: send(.commandModifierDown)
@@ -164,6 +170,7 @@ final class DictationController {
 
     private func stopAndProcess(_ mode: RecordingMode) {
         let samples = endRecording()
+        if model.settings.pushToTalkKey == .fn { inputSourceGuard.restoreSoon() }
         if model.settings.soundEffects { Sounds.shared.play(.stop, volume: model.settings.soundVolume) }
         process(samples, mode: mode, target: target)
     }
@@ -175,6 +182,7 @@ final class DictationController {
         case .tooShort:
             Log.write("Dismissed (too short)")
         case .userCancelled, .tripleTap:
+            if model.settings.pushToTalkKey == .fn { inputSourceGuard.restoreSoon() }
             if model.settings.soundEffects { Sounds.shared.play(.cancel, volume: model.settings.soundVolume) }
             if Double(samples.count) / 16000 > 0.6 {
                 cancelled = (samples, target, machine.currentMode ?? .pushToTalk)
@@ -196,7 +204,7 @@ final class DictationController {
 
     // MARK: - Processing
 
-    private func process(_ samples: [Float], mode: RecordingMode, target: TargetApp) {
+    func process(_ samples: [Float], mode: RecordingMode, target: TargetApp) {
         model.phase = .processing(mode)
         let audioDuration = Double(samples.count) / 16000
         let settings = model.settings
@@ -251,6 +259,11 @@ final class DictationController {
             guard !output.text.isEmpty else { return }
             if let reason = output.rejectedAIReason { Log.write("AI edit discarded: \(reason)") }
 
+            if dryRunSink != nil {
+                dryRunResult = DictationRecord(rawText: transcript.text, text: output.text, appName: target.name, appBundleID: target.bundleID,
+                                               audioDuration: audioDuration, processingTime: Date().timeIntervalSince(started), aiEdited: output.aiEdited)
+                return
+            }
             let focus = TextInserter.focusInfo()
             let text = TextInserter.adjustForContext(output.text, preceding: focus.precedingCharacter)
             let inserted = TextInserter.insert(text, keepInClipboard: settings.keepTranscriptInClipboard)
@@ -297,6 +310,10 @@ final class DictationController {
     private func finishProcessing() {
         _ = machine.handle(.processingFinished, at: now)
         if case .processing = model.phase { model.phase = .idle }
+        if let sink = dryRunSink {
+            sink(dryRunResult ?? DictationRecord(rawText: "", text: "", audioDuration: 0, processingTime: 0))
+            dryRunResult = nil
+        }
     }
 
     // MARK: - Menu actions

@@ -167,7 +167,11 @@ public enum AppPaths {
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return base.appendingPathComponent("Murmur", isDirectory: true)
     }
-    public static var modelsDirectory: URL { supportDirectory.appendingPathComponent("Models", isDirectory: true) }
+    /// Models always live in the real Application Support folder (they're large and shared with test runs).
+    public static var modelsDirectory: URL {
+        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+            .appendingPathComponent("Murmur/Models", isDirectory: true)
+    }
     public static var whisperModelsDirectory: URL { modelsDirectory.appendingPathComponent("whisper", isDirectory: true) }
     public static var llmModelsDirectory: URL { modelsDirectory.appendingPathComponent("llm", isDirectory: true) }
     public static var settingsFile: URL { supportDirectory.appendingPathComponent("settings.json") }
