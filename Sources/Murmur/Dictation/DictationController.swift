@@ -18,10 +18,19 @@ final class DictationController {
     /// Self-test hook: receives the final text instead of pasting it (no clipboard or history side effects).
     var dryRunSink: ((DictationRecord) -> Void)?
     private var dryRunResult: DictationRecord?
+    private var startContext: String?
+    let corrections = CorrectionWatcher()
 
     init(model: AppModel) {
         self.model = model
         model.onShortcutSettingsChanged = { [weak self] in self?.configureHotkeys() }
+        corrections.onLearn = { [weak model] correction in
+            guard let model, model.settings.autoLearnWords else { return }
+            guard !model.dictionary.contains(where: { $0.word == correction.to }) else { return }
+            model.addWord(correction.to, replacing: [correction.from], autoLearned: true)
+            model.showNotice("Added “\(correction.to)” to your dictionary", kind: .success, actions: [("View", .openDictionary)], duration: 3.5)
+            Log.write("Learned \(correction.from) → \(correction.to)")
+        }
     }
 
     private var now: TimeInterval { ProcessInfo.processInfo.systemUptime }
@@ -118,6 +127,8 @@ final class DictationController {
         model.dismissNotice()
         cancelled = nil
         target = TargetApp.current()
+        corrections.check()
+        startContext = model.settings.contextAwareness ? TextInserter.focusInfo().textBefore : nil
         if model.settings.soundEffects { Sounds.shared.play(.start, volume: model.settings.soundVolume) }
         recorder.onLevel = { [weak self] level in
             Task { @MainActor in self?.model.pushLevel(level) }
@@ -172,7 +183,7 @@ final class DictationController {
         let samples = endRecording()
         if model.settings.pushToTalkKey == .fn { inputSourceGuard.restoreSoon() }
         if model.settings.soundEffects { Sounds.shared.play(.stop, volume: model.settings.soundVolume) }
-        process(samples, mode: mode, target: target)
+        process(samples, mode: mode, target: target, textBefore: startContext)
     }
 
     private func cancel(_ reason: HotkeyStateMachine.CancelReason) {
@@ -204,7 +215,7 @@ final class DictationController {
 
     // MARK: - Processing
 
-    func process(_ samples: [Float], mode: RecordingMode, target: TargetApp) {
+    func process(_ samples: [Float], mode: RecordingMode, target: TargetApp, textBefore: String? = nil) {
         model.phase = .processing(mode)
         let audioDuration = Double(samples.count) / 16000
         let settings = model.settings
@@ -231,7 +242,7 @@ final class DictationController {
             let transcript: TranscriptionOutput
             do {
                 transcript = try await model.transcriber.transcribe(samples, language: settings.language,
-                                                                   prompt: VocabularyCorrector.speechPrompt(for: dictionary))
+                                                                   prompt: Self.speechPrompt(dictionary: dictionary, textBefore: textBefore))
             } catch {
                 Log.write("Transcription failed: \(error)")
                 model.showNotice("Transcription failed", kind: .error)
@@ -254,7 +265,7 @@ final class DictationController {
             let polisher = model.llmStatus.isReady ? model.polisher : nil
             let output = await Task.detached(priority: .userInitiated) {
                 TextPipeline.process(raw: transcript.text, settings: settings, dictionary: dictionary, snippets: snippets,
-                                     category: category, appName: target.name, polisher: polisher)
+                                     category: category, appName: target.name, polisher: polisher, textBefore: textBefore)
             }.value
             guard !output.text.isEmpty else { return }
             if let reason = output.rejectedAIReason { Log.write("AI edit discarded: \(reason)") }
@@ -265,9 +276,16 @@ final class DictationController {
                 return
             }
             let focus = TextInserter.focusInfo()
-            let text = TextInserter.adjustForContext(output.text, preceding: focus.precedingCharacter)
+            let adapted = settings.stylesEnabled || settings.smartFormatting ? ContinuationFormatter.adapt(output.text, before: focus.textBefore) : output.text
+            let text = TextInserter.adjustForContext(adapted, preceding: focus.precedingCharacter)
             let inserted = TextInserter.insert(text, keepInClipboard: settings.keepTranscriptInClipboard)
             let elapsed = Date().timeIntervalSince(started)
+            if inserted && settings.autoLearnWords {
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { [weak self] in
+                    let after = TextInserter.focusInfo()
+                    self?.corrections.track(element: after.element, inserted: adapted, endLocation: after.insertionLocation)
+                }
+            }
             Log.write("Inserted in \(String(format: "%.2f", elapsed))s (ai: \(output.aiEdited), \(String(format: "%.2f", output.aiSeconds))s): \(output.text)")
             if !inserted {
                 model.showNotice("Copied to clipboard — press ⌘V to paste", kind: .info, actions: [("Enable auto-paste", .openAccessibility)], duration: 5)
@@ -314,6 +332,18 @@ final class DictationController {
             sink(dryRunResult ?? DictationRecord(rawText: "", text: "", audioDuration: 0, processingTime: 0))
             dryRunResult = nil
         }
+    }
+
+    /// Whisper conditions on "previous text": dictionary words plus what's before the cursor help it spell names.
+    static func speechPrompt(dictionary: [DictionaryEntry], textBefore: String?) -> String? {
+        var parts: [String] = []
+        if let words = VocabularyCorrector.speechPrompt(for: dictionary) { parts.append(words) }
+        if let before = textBefore?.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression).trimmingCharacters(in: .whitespaces), !before.isEmpty {
+            var tail = String(before.suffix(160))
+            if before.count > 160, let space = tail.firstIndex(of: " ") { tail = String(tail[tail.index(after: space)...]) }
+            parts.append(tail)
+        }
+        return parts.isEmpty ? nil : parts.joined(separator: " ")
     }
 
     // MARK: - Menu actions

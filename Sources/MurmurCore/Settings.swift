@@ -59,6 +59,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var aiEditing = true
     public var llmModel: String = ModelDefaults.llmModel
     public var contextAwareness = true
+    public var autoLearnWords = true
 
     // Styles
     public var styles: [String: WritingStyle] = Dictionary(uniqueKeysWithValues: AppCategory.allCases.map { ($0.rawValue, .formal) })
@@ -102,6 +103,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         aiEditing = v(.aiEditing, aiEditing)
         llmModel = v(.llmModel, llmModel)
         contextAwareness = v(.contextAwareness, contextAwareness)
+        autoLearnWords = v(.autoLearnWords, autoLearnWords)
         styles = v(.styles, styles)
         stylesEnabled = v(.stylesEnabled, stylesEnabled)
         showFlowBarAlways = v(.showFlowBarAlways, showFlowBarAlways)

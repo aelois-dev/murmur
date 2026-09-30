@@ -153,7 +153,30 @@ enum EndToEndTest {
             check("escape cancels", textView.string.isEmpty && model.phase == .idle, "text=\(textView.string.debugDescription) notice=\(model.notice?.message ?? "none")")
 
             guard await ensureFocus() else { log.append("ABORT lost focus"); finish(log, passed: passed, total: total + 1, dir: audioDirectory); return }
-            // 6. Command Mode on a selection.
+            // 6. On-screen context: names already in the field are spelled the same way; mid-sentence continues lowercase.
+            textView.string = "Hi Siobhan, thanks for the notes. I was thinking that "
+            textView.setSelectedRange(NSRange(location: (textView.string as NSString).length, length: 0))
+            AudioRecorder.injectedSamples = samples("ctx_siobhan.wav")
+            postFn(down: true)
+            try? await Task.sleep(nanoseconds: 1_000_000_000)
+            postFn(down: false)
+            await waitIdle()
+            let ctxText = textView.string
+            check("context spelling (Siobhan)", ctxText.contains("that Siobhan") || ctxText.contains("that siobhan") ? ctxText.contains("Siobhan is right") : false, "text=\(ctxText.debugDescription)")
+
+            // 7. Auto-learning: the user fixes a name after insertion → it's added to the dictionary.
+            textView.string = "Please ask Kestrell about the launch."
+            textView.setSelectedRange(NSRange(location: (textView.string as NSString).length, length: 0))
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            let focus = TextInserter.focusInfo()
+            controller.corrections.track(element: focus.element, inserted: "Please ask Kestrell about the launch.", endLocation: focus.insertionLocation)
+            textView.string = "Please ask Kjestrel about the launch."
+            controller.corrections.check()
+            try? await Task.sleep(nanoseconds: 300_000_000)
+            check("auto-learn corrected name", model.dictionary.contains { $0.word == "Kjestrel" && $0.autoLearned }, "dictionary=\(model.dictionary.map(\.word))")
+            model.dictionary.removeAll { $0.autoLearned }
+
+            // 8. Command Mode on a selection.
             if model.llmStatus.isReady {
                 textView.string = "hey whats up can u send me the report by tmrw"
                 textView.selectAll(nil)

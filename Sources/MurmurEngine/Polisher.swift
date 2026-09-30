@@ -55,12 +55,15 @@ public struct EditContext: Sendable {
     public var category: AppCategory
     public var dictionary: [String]
     public var language: String?
+    /// Text already in the field before the cursor (for names and sentence continuation).
+    public var textBefore: String?
 
-    public init(appName: String? = nil, category: AppCategory = .other, dictionary: [String] = [], language: String? = nil) {
+    public init(appName: String? = nil, category: AppCategory = .other, dictionary: [String] = [], language: String? = nil, textBefore: String? = nil) {
         self.appName = appName
         self.category = category
         self.dictionary = dictionary
         self.language = language
+        self.textBefore = textBefore
     }
 }
 
@@ -96,6 +99,7 @@ public final class Polisher: @unchecked Sendable {
     - When the speaker lists several items ("one ..., two ...", "first ..., second ..."), format them as a numbered list with one item per line.
     - Turn spoken commands like "new line", "new paragraph", "period", "comma", "question mark" into the formatting they name.
     - Use the spellings in the Dictionary exactly when those words appear.
+    - "Before cursor" shows text already written in the field. Use it only to spell names the same way and to continue its sentence naturally. Never repeat, edit or answer it.
     """
 
     static let cleanupExamples: [(String, String)] = [
@@ -108,6 +112,14 @@ public final class Polisher: @unchecked Sendable {
         ("hey team new paragraph the deploy is done and everything looks good", "Hey team,\n\nThe deploy is done and everything looks good."),
         ("can you send it to Jon, no, to Sarah by Friday", "Can you send it to Sarah by Friday?"),
         ("rewrite this more formally colon hey what's up with the invoice", "Rewrite this more formally: Hey, what's up with the invoice?"),
+    ]
+
+    /// Examples showing how on-screen context is used: spelling from context, never repeating it.
+    static let contextExamples = [
+        ("Before cursor: Hi Siobhan, thanks for the notes on the Kestrel launch.\nTranscript: um I think shivon is right that the kestrel timeline is tight",
+         "I think Siobhan is right that the Kestrel timeline is tight."),
+        ("Before cursor: The demo went well. We should ship it next week.\nTranscript: let's do the retro on monday no tuesday",
+         "Let's do the retro on Tuesday."),
     ]
 
     static let commandSystem = """
@@ -133,29 +145,41 @@ public final class Polisher: @unchecked Sendable {
         if let context {
             if let app = context.appName { lines.append("App: \(app)") }
             if !context.dictionary.isEmpty { lines.append("Dictionary: \(context.dictionary.prefix(30).joined(separator: ", "))") }
+            if let before = context.textBefore.map(Self.contextSnippet), !before.isEmpty { lines.append("Before cursor: \(before)") }
         }
         lines.append("Transcript: \(transcript)")
         return lines.joined(separator: "\n")
+    }
+
+    /// The last ~300 characters before the cursor, on one line, starting at a word boundary.
+    static func contextSnippet(_ text: String) -> String {
+        var t = String(text.suffix(300))
+        if text.count > 300, let space = t.firstIndex(of: " ") { t = String(t[t.index(after: space)...]) }
+        return t.replacingOccurrences(of: #"\s+"#, with: " ", options: .regularExpression).trimmingCharacters(in: .whitespaces)
+    }
+
+    var cleanupTurns: [(String, String)] {
+        Self.contextExamples + Self.cleanupExamples.map { ("Transcript: \($0.0)", $0.1) }
     }
 
     // MARK: Cleanup
 
     /// Warms the KV cache with the fixed instructions so the first dictation is fast.
     public func warmUp() {
-        _ = try? llm.generate(prompt: chatML(system: Self.cleanupSystem, turns: Self.cleanupExamples.map { ("Transcript: \($0.0)", $0.1) }, user: "Transcript: ok"), maxTokens: 1)
+        _ = try? llm.generate(prompt: chatML(system: Self.cleanupSystem, turns: cleanupTurns, user: "Transcript: ok"), maxTokens: 1)
     }
 
     public func cleanup(_ transcript: String, context: EditContext?) -> PolishResult {
         let input = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !input.isEmpty else { return PolishResult(text: input, usedAI: false) }
-        let prompt = chatML(system: Self.cleanupSystem,
-                            turns: Self.cleanupExamples.map { ("Transcript: \($0.0)", $0.1) },
+        let prompt = chatML(system: Self.cleanupSystem, turns: cleanupTurns,
                             user: Self.userMessage(transcript: input, context: context))
         let maxTokens = min(1500, max(64, Int(Double(input.count) / 2.2)))
         do {
             let (raw, stats) = try llm.generate(prompt: prompt, maxTokens: maxTokens, stop: ["<|im_end|>", "<|im_start|>", "\nTranscript:"], draftSource: input)
-            let output = Self.sanitize(raw)
-            if let reason = Self.rejectionReason(input: input, output: output) {
+            if ProcessInfo.processInfo.environment["MURMUR_DEBUG_LLM"] != nil { print("RAW LLM:", raw.debugDescription) }
+            let output = Self.stripLeakedContext(Self.sanitize(raw), input: input, before: context?.textBefore)
+            if let reason = Self.rejectionReason(input: input, output: output) ?? Self.contextLeak(output: output, input: input, before: context?.textBefore) {
                 return PolishResult(text: input, usedAI: false, rejectedReason: reason, stats: stats)
             }
             return PolishResult(text: output, usedAI: true, stats: stats)
@@ -196,6 +220,43 @@ public final class Polisher: @unchecked Sendable {
             t = String(t.dropFirst().dropLast())
         }
         return t
+    }
+
+    /// Small models sometimes echo text from before the cursor ahead of the edit; drop that echo.
+    static func stripLeakedContext(_ output: String, input: String, before: String?) -> String {
+        guard let before, !before.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return output }
+        func tokens(_ s: String) -> [Substring] { s.split(whereSeparator: { $0.isWhitespace }) }
+        func norm(_ t: Substring) -> String { t.lowercased().trimmingCharacters(in: .punctuationCharacters) }
+        let outTokens = tokens(output)
+        let ctx = tokens(before).map(norm)
+        let inputStart = tokens(input).prefix(3).map(norm)
+        guard outTokens.count >= 2, !ctx.isEmpty else { return output }
+        // Longest prefix of the output that appears verbatim (as words) somewhere in the context.
+        var best = 0
+        for start in ctx.indices {
+            var n = 0
+            while n < outTokens.count - 1, start + n < ctx.count, norm(outTokens[n]) == ctx[start + n], !ctx[start + n].isEmpty || n > 0 { n += 1 }
+            best = max(best, n)
+        }
+        let echoed = outTokens.prefix(best).map(norm)
+        // Only strip when it's a real echo: at least 2 words (or a whole short header), and not how the dictation itself begins.
+        guard best >= 2 || (best >= 1 && ctx.count <= 2), Array(echoed.prefix(inputStart.count)) != inputStart || best > inputStart.count + 2 else { return output }
+        let cut = outTokens[best - 1].endIndex
+        let rest = output[cut...].trimmingCharacters(in: .whitespacesAndNewlines)
+        return rest.isEmpty ? output : rest
+    }
+
+    /// Rejects outputs that copied text from before the cursor.
+    static func contextLeak(output: String, input: String, before: String?) -> String? {
+        guard let before else { return nil }
+        let tail = WordErrorRate.normalize(before).suffix(5)
+        guard tail.count == 5 else { return nil }
+        let out = WordErrorRate.normalize(output), inp = WordErrorRate.normalize(input)
+        func contains(_ hay: [String], _ needle: [String]) -> Bool {
+            guard hay.count >= needle.count else { return false }
+            return (0...(hay.count - needle.count)).contains { Array(hay[$0..<($0 + needle.count)]) == needle }
+        }
+        return contains(out, Array(tail)) && !contains(inp, Array(tail)) ? "repeated text from before the cursor" : nil
     }
 
     /// Returns why an AI edit should be discarded, or nil if it looks like a faithful edit.
@@ -242,7 +303,7 @@ public struct TextPipeline: Sendable {
     }
 
     public static func process(raw: String, settings: AppSettings, dictionary: [DictionaryEntry], snippets: [Snippet],
-                               category: AppCategory, appName: String?, polisher: Polisher?) -> Output {
+                               category: AppCategory, appName: String?, polisher: Polisher?, textBefore: String? = nil) -> Output {
         var text = raw.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { return Output(text: "", aiEdited: false, aiSeconds: 0) }
 
@@ -262,7 +323,8 @@ public struct TextPipeline: Sendable {
         if settings.aiEditing, let polisher, words >= 3, words <= 500 {
             let start = Date()
             let context = EditContext(appName: settings.contextAwareness ? appName : nil, category: category,
-                                      dictionary: dictionary.map(\.word), language: settings.language)
+                                      dictionary: dictionary.map(\.word), language: settings.language,
+                                      textBefore: settings.contextAwareness ? textBefore : nil)
             let result = polisher.cleanup(text, context: context)
             aiSeconds = Date().timeIntervalSince(start)
             if result.usedAI {

@@ -8,16 +8,24 @@ enum TextInserter {
         var precedingCharacter: Character?
         var selectedText: String?
         var isTextInput: Bool
+        /// Up to ~600 characters before the insertion point (for context and continuation).
+        var textBefore: String?
+        var element: AXUIElement?
+        var insertionLocation: Int?
     }
 
     /// Inspects the focused UI element through Accessibility (best-effort; many apps expose nothing).
     static func focusInfo() -> FocusInfo {
         let system = AXUIElementCreateSystemWide()
+        // Never let a hung app stall dictation.
+        AXUIElementSetMessagingTimeout(system, 0.25)
         var focused: CFTypeRef?
-        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focused) == .success, let focused else {
+        guard AXUIElementCopyAttributeValue(system, kAXFocusedUIElementAttribute as CFString, &focused) == .success, let focused,
+              CFGetTypeID(focused) == AXUIElementGetTypeID() else {
             return FocusInfo(precedingCharacter: nil, selectedText: nil, isTextInput: false)
         }
         let element = focused as! AXUIElement
+        AXUIElementSetMessagingTimeout(element, 0.25)
         var role: CFTypeRef?
         AXUIElementCopyAttributeValue(element, kAXRoleAttribute as CFString, &role)
         let roleString = role as? String ?? ""
@@ -30,21 +38,34 @@ enum TextInserter {
         }
 
         var preceding: Character?
+        var textBefore: String?
+        var location: Int?
         var rangeValue: CFTypeRef?
         var value: CFTypeRef?
         if AXUIElementCopyAttributeValue(element, kAXSelectedTextRangeAttribute as CFString, &rangeValue) == .success,
            AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &value) == .success,
            let text = value as? String, let rangeValue, CFGetTypeID(rangeValue) == AXValueGetTypeID() {
             var range = CFRange()
-            if AXValueGetValue(rangeValue as! AXValue, .cfRange, &range), range.location > 0 {
+            if AXValueGetValue(rangeValue as! AXValue, .cfRange, &range) {
                 let ns = text as NSString
-                if range.location <= ns.length {
-                    let prev = ns.substring(with: NSRange(location: range.location - 1, length: 1))
-                    preceding = prev.first
+                location = range.location
+                if range.location > 0 && range.location <= ns.length {
+                    preceding = ns.substring(with: NSRange(location: range.location - 1, length: 1)).first
+                    let start = max(0, range.location - 600)
+                    textBefore = ns.substring(with: NSRange(location: start, length: range.location - start))
                 }
             }
         }
-        return FocusInfo(precedingCharacter: preceding, selectedText: selectedText, isTextInput: isText)
+        return FocusInfo(precedingCharacter: preceding, selectedText: selectedText, isTextInput: isText,
+                         textBefore: textBefore, element: element, insertionLocation: location)
+    }
+
+    /// Reads the full text of an element (used to notice corrections after insertion).
+    static func value(of element: AXUIElement) -> String? {
+        AXUIElementSetMessagingTimeout(element, 0.25)
+        var value: CFTypeRef?
+        guard AXUIElementCopyAttributeValue(element, kAXValueAttribute as CFString, &value) == .success else { return nil }
+        return value as? String
     }
 
     /// Adds a leading space when continuing after a word, like Flow's smart spacing.

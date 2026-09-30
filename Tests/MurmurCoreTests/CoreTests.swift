@@ -19,6 +19,8 @@ import Testing
         ("one of them said two things", "One of them said two things"),
         ("hello comma how are you question mark", "Hello, how are you?"),
         ("Uh.", ""),
+        ("I'm running about 10 minutes late, sorry, 15 minutes late. Start without me.", "I'm running about 15 minutes late. Start without me."),
+        ("Revenue grew 20 percent, I mean 25 percent this year.", "Revenue grew 25 percent this year."),
         ("We shipped it. Uh, it works.", "We shipped it. It works."),
     ])
     func cleans(input: String, expected: String) {
@@ -250,5 +252,40 @@ import Testing
         #expect(WordErrorRate.compute(reference: "hello world", hypothesis: "Hello, world!") == 0)
         #expect(WordErrorRate.compute(reference: "hello world", hypothesis: "hello word") == 0.5)
         #expect(WordErrorRate.compute(reference: "meet at seven", hypothesis: "meet at 7") == 0)
+    }
+}
+
+@Suite struct LearningTests {
+    @Test func spotsNameFix() {
+        let c = CorrectionLearner.corrections(original: "Can you ask Jon about the deck?", edited: "Can you ask John about the deck?")
+        #expect(c == [CorrectionLearner.Correction(from: "Jon", to: "John")])
+    }
+
+    @Test func spotsJargonFix() {
+        let c = CorrectionLearner.corrections(original: "We shipped the cube control config.", edited: "We shipped the kubectl config.")
+        #expect(c.isEmpty || c.allSatisfy { $0.to == "kubectl" })
+    }
+
+    @Test func capitalizationFix() {
+        let c = CorrectionLearner.corrections(original: "I love the murmur app.", edited: "I love the Murmur app.")
+        #expect(c == [CorrectionLearner.Correction(from: "murmur", to: "Murmur")])
+    }
+
+    @Test func ignoresRewrites() {
+        #expect(CorrectionLearner.corrections(original: "See you at noon tomorrow.", edited: "Actually let's reschedule to next week sometime.").isEmpty)
+    }
+
+    @Test func ignoresUnchanged() {
+        #expect(CorrectionLearner.corrections(original: "All good here.", edited: "All good here.").isEmpty)
+    }
+
+    @Test func continuation() {
+        #expect(ContinuationFormatter.isMidSentence("I was thinking that"))
+        #expect(!ContinuationFormatter.isMidSentence("Done."))
+        #expect(!ContinuationFormatter.isMidSentence("Hi,\n"))
+        #expect(ContinuationFormatter.adapt("The deploy is done.", before: "and then ") == "the deploy is done.")
+        #expect(ContinuationFormatter.adapt("Sarah said yes.", before: "and then ") == "Sarah said yes.")
+        #expect(ContinuationFormatter.adapt("The deploy is done.", before: "Great. ") == "The deploy is done.")
+        #expect(ContinuationFormatter.adapt("I think so.", before: "well ") == "I think so.")
     }
 }

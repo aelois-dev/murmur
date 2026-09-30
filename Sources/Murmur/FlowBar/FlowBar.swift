@@ -115,6 +115,9 @@ final class FlowBarController {
             Permissions.openMicrophoneSettings()
         case .paste:
             controller?.pasteLastTranscript()
+        case .openDictionary:
+            model.hubSection = .dictionary
+            NotificationCenter.default.post(name: .murmurShowHub, object: nil)
         }
     }
 }

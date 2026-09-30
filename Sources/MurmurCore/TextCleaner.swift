@@ -154,7 +154,12 @@ public struct TextCleaner: Sendable {
         let pattern = #"\b("# + unit + #")\s*[,.…-]*\s*(?:"# + trigger + #")\s*[,.…-]*\s*(?:"# + trigger + #")?\s*[,.…-]*\s*("# + unit + #")\b"#
         text = replace(text, pattern, "$2", options: [.caseInsensitive])
 
-        // 3. "X, no, Y" / "X, I mean Y" for single words of the same shape is ambiguous; leave it to AI polish.
+        // 3. Restated quantities that repeat their unit: "10 minutes late, sorry, 15 minutes late" → "15 minutes late".
+        let num = #"(?:\d+(?:\.\d+)?|"# + numberWords.joined(separator: "|") + #")"#
+        let restated = #"\b"# + num + #"((?:\s+[A-Za-z%]+){1,3})\s*[,.…-]*\s*(?:"# + trigger + #")\s*[,.…-]*\s*("# + num + #")\1\b"#
+        text = replace(text, restated, "$2$1", options: [.caseInsensitive])
+
+        // 4. "X, no, Y" / "X, I mean Y" for single words of the same shape is ambiguous; leave it to AI polish.
         return collapseSpaces(text)
     }
 

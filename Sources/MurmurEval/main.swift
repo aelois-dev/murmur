@@ -19,6 +19,7 @@ struct TextCase: Codable {
     var input: String
     var expected: String
     var app: String?
+    var before: String?
 }
 
 func loadSamples(_ path: String) throws -> [Float] {
@@ -115,7 +116,7 @@ case "text":
     var exact = 0, simTotal = 0.0, timeTotal = 0.0
     for c in cases {
         let t0 = Date()
-        let result = TextPipeline.process(raw: c.input, settings: settings, dictionary: [DictionaryEntry(word: "Murmur"), DictionaryEntry(word: "WhisperKit")], snippets: [], category: .other, appName: c.app, polisher: polisher)
+        let result = TextPipeline.process(raw: c.input, settings: settings, dictionary: [DictionaryEntry(word: "Murmur"), DictionaryEntry(word: "WhisperKit")], snippets: [], category: .other, appName: c.app, polisher: polisher, textBefore: c.before)
         let dt = Date().timeIntervalSince(t0)
         timeTotal += dt
         let sim = WordErrorRate.similarity(c.expected, result.text)

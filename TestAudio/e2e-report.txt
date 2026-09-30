@@ -5,12 +5,14 @@ PASS mic conversion 24000Hz x1: samples=15690 expected≈15701 rms=0.212
 PASS sounds loaded: players ready: true
 PASS push-to-talk recording state: phase while held: true
 PASS push-to-talk paste: text="So I think we should meet tomorrow at noon."
-PASS clipboard restored: clipboard="murmur-clipboard-sentinel-CC7898"
+PASS clipboard restored: clipboard="murmur-clipboard-sentinel-CC6129"
 PASS smart spacing + backtrack: text="So I think we should meet tomorrow at noon. Let\'s do coffee at 3."
 PASS hands-free locked after double-tap: phase: true
 PASS hands-free paste: text="What\'s the capital of France?"
 PASS quick tap dismissed: text=""
 PASS escape cancels: text="" notice=Transcript cancelled
+PASS context spelling (Siobhan): text="Hi Siobhan, thanks for the notes. I was thinking that Siobhan is right about the timeline."
+PASS auto-learn corrected name: dictionary=["Kjestrel"]
 PASS command mode state: phase: true
 PASS command mode rewrite: text="Hello, how are you? Could you please send me the report by tomorrow?"
-RESULT 15/15 passed
+RESULT 17/17 passed

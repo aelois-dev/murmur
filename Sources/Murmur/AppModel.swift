@@ -35,7 +35,7 @@ enum DictationPhase: Equatable {
 
 struct FlowNotice: Equatable, Identifiable {
     enum Kind: Equatable { case info, error, success }
-    enum Action: Equatable { case undoCancel, openHistory, openSettings, openAccessibility, openMicrophone, paste }
+    enum Action: Equatable { case undoCancel, openHistory, openSettings, openAccessibility, openMicrophone, paste, openDictionary }
 
     let id = UUID()
     var message: String
