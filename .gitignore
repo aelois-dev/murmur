@@ -4,3 +4,5 @@ build/
 *.xcframework/**/dSYMs/
 TestAudio/*.wav
 .DS_Store
+TestAudio/e2e-report.txt
+TestAudio/selftest-report.json
