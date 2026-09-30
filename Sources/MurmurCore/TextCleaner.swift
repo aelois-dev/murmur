@@ -245,7 +245,7 @@ public struct TextCleaner: Sendable {
 
     // MARK: - Punctuation & capitalization
 
-    static func fixPunctuationSpacing(_ input: String) -> String {
+    public static func fixPunctuationSpacing(_ input: String) -> String {
         var text = input
         text = replace(text, #"[ \t]+([,.;:!?…])"#, "$1")
         text = replace(text, #"([,;:])(?=[A-Za-z])"#, "$1 ")

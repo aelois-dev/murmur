@@ -160,6 +160,10 @@ public struct JSONStore<Value: Codable> {
 
 public enum AppPaths {
     public static var supportDirectory: URL {
+        // Tests and UI snapshots point this elsewhere so they never touch real user data.
+        if let override = ProcessInfo.processInfo.environment["MURMUR_SUPPORT_DIR"], !override.isEmpty {
+            return URL(fileURLWithPath: override, isDirectory: true)
+        }
         let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
         return base.appendingPathComponent("Murmur", isDirectory: true)
     }

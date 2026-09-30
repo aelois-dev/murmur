@@ -18,6 +18,8 @@ public struct HotkeyStateMachine: Sendable {
         case barClicked, stopClicked, cancelClicked
         case tick
         case processingFinished
+        /// Another key was pressed while the push-to-talk key was held (e.g. fn+arrow): not a dictation.
+        case otherKeyPressed
     }
 
     public enum CancelReason: Sendable, Equatable {
@@ -101,6 +103,10 @@ public struct HotkeyStateMachine: Sendable {
         case (.recording(.pushToTalk, let started, _), .handsFreeShortcut):
             state = .recording(mode: .handsFree, startedAt: started, lockedAt: now)
             return [.switchMode(.handsFree)]
+        case (.recording(.pushToTalk, let started, _), .otherKeyPressed):
+            guard now - started < 1.0 else { return [] }
+            state = .idle
+            return [.cancel(.tooShort)]
         case (.recording(.pushToTalk, let started, _), .commandModifierDown):
             guard commandModeEnabled, now - started < timing.commandSwitchWindow else { return [] }
             state = .recording(mode: .command, startedAt: started, lockedAt: nil)
@@ -124,6 +130,9 @@ public struct HotkeyStateMachine: Sendable {
                 return [.cancel(.tooShort)]
             }
             return []
+        case (.awaitingSecondTap, .otherKeyPressed):
+            state = .idle
+            return [.cancel(.tooShort)]
         case (.awaitingSecondTap, .escape), (.awaitingSecondTap, .cancelClicked):
             state = .idle
             return [.cancel(.userCancelled)]

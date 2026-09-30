@@ -1,0 +1,13 @@
+[
+  {"file": "01_simple.wav", "text": "Hey, can you send me the quarterly report by Friday? Thanks.", "expected": "Hey, can you send me the quarterly report by Friday? Thanks."},
+  {"file": "02_fillers.wav", "text": "Um, so I think we should, uh, meet tomorrow at noon.", "expected": "So I think we should meet tomorrow at noon."},
+  {"file": "03_backtrack.wav", "text": "Let's do coffee at 2, actually 3.", "expected": "Let's do coffee at 3."},
+  {"file": "04_list.wav", "text": "My top goals this week are one, finish the report, two, send the presentation, three, book the flights.", "expected": "My top goals this week are:\n1. Finish the report\n2. Send the presentation\n3. Book the flights"},
+  {"file": "05_punct.wav", "text": "I can't wait to see you exclamation point let's meet at seven period", "expected": "I can't wait to see you! Let's meet at 7."},
+  {"file": "06_question.wav", "text": "What's the capital of France?", "expected": "What's the capital of France?"},
+  {"file": "07_instruction.wav", "text": "Write a short poem about the ocean.", "expected": "Write a short poem about the ocean."},
+  {"file": "08_long.wav", "text": "The new release makes on-device transcription really fast, and the latency is under a second on most Macs, which honestly feels like magic when you're writing long emails.", "expected": "The new release makes on-device transcription really fast, and the latency is under a second on most Macs, which honestly feels like magic when you're writing long emails."},
+  {"file": "09_scratch.wav", "text": "Please add milk, eggs and bread to the shopping list. Scratch that. Just add milk.", "expected": "Just add milk."},
+  {"file": "10_paragraph.wav", "text": "Hi Sarah new paragraph I wanted to follow up on our conversation from yesterday about the product launch.", "expected": "Hi Sarah,\n\nI wanted to follow up on our conversation from yesterday about the product launch."},
+  {"file": "11_silence.wav", "text": "", "expected": ""}
+]

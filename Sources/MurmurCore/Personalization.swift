@@ -59,7 +59,7 @@ public enum SnippetExpander {
         return (result, used)
     }
 
-    static func normalize(_ s: String) -> String {
+    public static func normalize(_ s: String) -> String {
         s.lowercased().components(separatedBy: CharacterSet.alphanumerics.inverted).filter { !$0.isEmpty }.joined(separator: " ")
     }
 }

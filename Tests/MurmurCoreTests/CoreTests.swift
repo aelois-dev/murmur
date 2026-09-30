@@ -183,6 +183,13 @@ import Testing
         #expect(m.state == .idle)
     }
 
+    @Test func fnComboIsNotDictation() {
+        var m = HotkeyStateMachine()
+        _ = m.handle(.pttDown, at: 0)
+        #expect(m.handle(.otherKeyPressed, at: 0.2) == [.cancel(.tooShort)])
+        #expect(m.state == .idle)
+    }
+
     @Test func busyNotice() {
         var m = HotkeyStateMachine()
         _ = m.handle(.pttDown, at: 0)
