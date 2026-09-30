@@ -6,6 +6,8 @@ Everything runs on your Mac. Speech recognition uses Whisper Large v3 Turbo on t
 
 ## First launch (about 2 minutes)
 
+**You need a microphone.** A Mac mini has no built-in mic, and the only input on your Mac right now is "Microsoft Teams Audio", a virtual device. Connect AirPods, a headset, a webcam or a USB mic first. Onboarding includes a live mic test with a device picker.
+
 1. Open **Murmur** from `/Applications` (or Spotlight). The onboarding window appears.
 2. **Microphone**: click *Allow*.
 3. **Accessibility**: click *Allow*. System Settings opens; switch **Murmur** on. This lets Murmur hear your shortcut in every app and paste text.

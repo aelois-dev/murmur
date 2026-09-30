@@ -93,6 +93,9 @@ struct OnboardingView: View {
                 Permissions.promptAccessibility()
                 Permissions.openAccessibilitySettings()
             }
+            if model.micAuthorized {
+                Card(padding: 16) { MicTestView(autoStart: true) }
+            }
         }
         .frame(maxWidth: 560)
     }

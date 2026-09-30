@@ -5,7 +5,6 @@ import SwiftUI
 
 struct SettingsView: View {
     @EnvironmentObject var model: AppModel
-    @State private var devices: [AudioInputDevice] = AudioInputDevice.all()
     @State private var confirmClear = false
     @State private var globeUsage = Permissions.globeKeyUsage
 
@@ -46,15 +45,12 @@ struct SettingsView: View {
             }
 
             SettingsSection(title: "Microphone & sounds") {
-                SettingsRow(title: "Microphone", detail: nil) {
-                    Picker("", selection: $model.settings.microphoneUID) {
-                        Text("System default\(AudioInputDevice.defaultInputName.map { " (\($0))" } ?? "")").tag(String?.none)
-                        ForEach(devices) { Text($0.name).tag(String?.some($0.uid)) }
-                    }
-                    .labelsHidden()
-                    .frame(width: 260)
-                    .onAppear { devices = AudioInputDevice.all() }
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("Microphone").font(.system(size: 13, weight: .medium))
+                    MicTestView(autoStart: false)
                 }
+                .padding(.horizontal, 16)
+                .padding(.vertical, 13)
                 SettingsRow(title: "Sound effects", detail: "Soft chimes when dictation starts and stops.") {
                     HStack(spacing: 10) {
                         if model.settings.soundEffects {

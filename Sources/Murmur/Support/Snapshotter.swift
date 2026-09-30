@@ -7,6 +7,7 @@ import SwiftUI
 enum Snapshotter {
     static func run(outputDirectory: URL) {
         try? FileManager.default.createDirectory(at: outputDirectory, withIntermediateDirectories: true)
+        MicMeter.previewOnly = true
         let model = AppModel.shared
         model.whisperStatus = .ready
         model.llmStatus = .ready
@@ -26,8 +27,11 @@ enum Snapshotter {
         model.hubSection = .settings
         render(SettingsView().environmentObject(model).frame(width: 784).background(Theme.background), size: NSSize(width: 784, height: 2300), appearance: light,
                to: outputDirectory.appendingPathComponent("settings-full.png"))
-        model.micAuthorized = false
+        model.micAuthorized = true
         model.accessibilityTrusted = false
+        render(OnboardingView(onFinish: {}, initialStep: 1).environmentObject(model), size: NSSize(width: 760, height: 560),
+               appearance: NSAppearance(named: .darkAqua)!, to: outputDirectory.appendingPathComponent("onboarding-1-mic.png"))
+        model.micAuthorized = false
         for step in 0..<5 {
             render(OnboardingView(onFinish: {}, initialStep: step).environmentObject(model), size: NSSize(width: 760, height: 560),
                    appearance: NSAppearance(named: .darkAqua)!, to: outputDirectory.appendingPathComponent("onboarding-\(step).png"))
