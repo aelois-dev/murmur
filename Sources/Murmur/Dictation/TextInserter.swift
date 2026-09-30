@@ -12,6 +12,8 @@ enum TextInserter {
         var textBefore: String?
         var element: AXUIElement?
         var insertionLocation: Int?
+        /// True when the app reported its selection (even an empty one) through Accessibility.
+        var selectionKnown = false
     }
 
     /// Inspects the focused UI element through Accessibility (best-effort; many apps expose nothing).
@@ -33,8 +35,10 @@ enum TextInserter {
 
         var selected: CFTypeRef?
         var selectedText: String?
-        if AXUIElementCopyAttributeValue(element, kAXSelectedTextAttribute as CFString, &selected) == .success, let s = selected as? String, !s.isEmpty {
-            selectedText = s
+        var selectionKnown = false
+        if AXUIElementCopyAttributeValue(element, kAXSelectedTextAttribute as CFString, &selected) == .success, let s = selected as? String {
+            selectionKnown = true
+            if !s.isEmpty { selectedText = s }
         }
 
         var preceding: Character?
@@ -57,7 +61,7 @@ enum TextInserter {
             }
         }
         return FocusInfo(precedingCharacter: preceding, selectedText: selectedText, isTextInput: isText,
-                         textBefore: textBefore, element: element, insertionLocation: location)
+                         textBefore: textBefore, element: element, insertionLocation: location, selectionKnown: selectionKnown)
     }
 
     /// Reads the full text of an element (used to notice corrections after insertion).

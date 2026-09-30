@@ -144,8 +144,7 @@ final class DictationController {
         model.dismissNotice()
         cancelled = nil
         target = TargetApp.current()
-        corrections.check()
-        startContext = model.settings.contextAwareness ? TextInserter.focusInfo().textBefore : nil
+        startContext = nil
         if model.settings.soundEffects { Sounds.shared.play(.start, volume: model.settings.soundVolume) }
         recorder.onLevel = { [weak self] level in
             Task { @MainActor in self?.model.pushLevel(level) }
@@ -167,6 +166,9 @@ final class DictationController {
         }
         model.phase = .recording(mode)
         model.recordingStartedAt = Date()
+        // Accessibility reads can be slow in some apps, so they happen after the microphone is already running.
+        corrections.check()
+        if model.settings.contextAwareness { startContext = TextInserter.focusInfo().textBefore }
         tickTimer?.invalidate()
         speculation = nil
         tickTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
@@ -249,6 +251,7 @@ final class DictationController {
 
     private func cancel(_ reason: HotkeyStateMachine.CancelReason) {
         speculation = nil
+        let cancelledMode: RecordingMode = { if case .recording(let m) = model.phase { return m }; return .pushToTalk }()
         let samples = endRecording()
         model.phase = .idle
         switch reason {
@@ -258,7 +261,7 @@ final class DictationController {
             if model.settings.pushToTalkKey == .fn { inputSourceGuard.restoreSoon() }
             if model.settings.soundEffects { Sounds.shared.play(.cancel, volume: model.settings.soundVolume) }
             if Double(samples.count) / 16000 > 0.6 {
-                cancelled = (samples, target, machine.currentMode ?? .pushToTalk)
+                cancelled = (samples, target, cancelledMode)
                 model.showNotice("Transcript cancelled", actions: [("Undo", .undoCancel), ("Open History", .openHistory)], duration: 5)
             }
             Log.write("Cancelled by user")
@@ -379,7 +382,7 @@ final class DictationController {
         }
         let focus = TextInserter.focusInfo()
         var selected = focus.selectedText
-        if selected == nil { selected = TextInserter.copySelection() }
+        if selected == nil && !focus.selectionKnown { selected = TextInserter.copySelection() }
         let selection = selected
         do {
             let (result, stats) = try await Task.detached(priority: .userInitiated) {

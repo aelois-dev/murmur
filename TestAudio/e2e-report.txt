@@ -5,9 +5,9 @@ PASS mic conversion 24000Hz x1: samples=15690 expected≈15701 rms=0.212
 PASS sounds loaded: players ready: true
 PASS push-to-talk recording state: phase while held: true
 PASS push-to-talk paste: text="So I think we should meet tomorrow at noon."
-PASS clipboard restored: clipboard="murmur-clipboard-sentinel-90A8E7"
+PASS clipboard restored: clipboard="murmur-clipboard-sentinel-BFBD0F"
 PASS smart spacing + backtrack: text="So I think we should meet tomorrow at noon. Let\'s do coffee at 3."
-PASS instant text after a pause: latency=0.22s text="Hey, can you send me the quarterly report by Friday? Thanks."
+PASS instant text after a pause: latency=0.24s text="Hey, can you send me the quarterly report by Friday? Thanks."
 PASS hands-free locked after double-tap: phase: true
 PASS hands-free paste: text="What\'s the capital of France?"
 PASS paste last transcript (⌃⌘V): text="What\'s the capital of France?"
