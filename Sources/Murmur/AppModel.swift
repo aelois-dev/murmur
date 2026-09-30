@@ -220,8 +220,11 @@ final class AppModel: ObservableObject {
     // MARK: - Permissions
 
     func refreshPermissions() {
-        micAuthorized = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
-        accessibilityTrusted = AXIsProcessTrusted()
+        let mic = AVCaptureDevice.authorizationStatus(for: .audio) == .authorized
+        let ax = AXIsProcessTrusted()
+        // Only publish real changes; this runs on timers and every publish re-renders the UI.
+        if mic != micAuthorized { micAuthorized = mic }
+        if ax != accessibilityTrusted { accessibilityTrusted = ax }
     }
 
     func requestMicrophone() {

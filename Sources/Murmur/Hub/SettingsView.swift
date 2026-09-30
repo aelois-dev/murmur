@@ -115,7 +115,7 @@ struct SettingsView: View {
                         }
                     }
                 }
-                SettingsRow(title: "Context awareness", detail: "Tells the editor which app you're in so names and tone fit.") {
+                SettingsRow(title: "Context awareness", detail: "Uses the app you're in and the text just before your cursor to spell names right and continue sentences naturally. Stays on this Mac.") {
                     Toggle("", isOn: $model.settings.contextAwareness).labelsHidden().toggleStyle(.switch).tint(Theme.accent)
                 }
             }

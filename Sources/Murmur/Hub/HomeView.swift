@@ -111,29 +111,50 @@ struct ShortcutHint: View {
     }
 }
 
-/// A live-looking Flow bar mock that animates gently.
+/// A live-looking Flow bar mock. The bars are CALayers animated by the window server,
+/// so the illustration costs the app essentially no CPU (SwiftUI-driven animation cost ~15%).
 struct FlowBarIllustration: View {
-    static func level(index: Int, time t: Double) -> CGFloat {
-        let x = Double(index)
-        let wave: Double = abs(sin(t * 2.2 + x * 0.7))
-        let swell: Double = 0.6 + 0.4 * sin(t * 0.9 + x)
-        return CGFloat(0.25 + 0.55 * wave * swell)
-    }
-
     var body: some View {
-        TimelineView(.animation(minimumInterval: 1 / 20)) { timeline in
-            let t = timeline.date.timeIntervalSinceReferenceDate
-            let levels: [CGFloat] = (0..<13).map { Self.level(index: $0, time: t) }
-            ZStack {
-                Capsule().fill(Color.black.opacity(0.92))
-                Capsule().strokeBorder(Color.white.opacity(0.18))
-                WaveformBars(levels: levels, color: .white, barWidth: 3, spacing: 3, maxHeight: 22)
-            }
-            .frame(width: 118, height: 38)
-            .shadow(color: .black.opacity(0.18), radius: 12, y: 4)
+        ZStack {
+            Capsule().fill(Color.black.opacity(0.92)).shadow(color: .black.opacity(0.18), radius: 12, y: 4)
+            Capsule().strokeBorder(Color.white.opacity(0.18))
+            AnimatedBars().frame(width: 13 * 3 + 12 * 3, height: 22)
         }
+        .frame(width: 118, height: 38)
         .frame(width: 150)
     }
+}
+
+private struct AnimatedBars: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSView {
+        let view = NSView(frame: NSRect(x: 0, y: 0, width: 75, height: 22))
+        view.wantsLayer = true
+        let count = 13
+        for i in 0..<count {
+            let x = Double(i)
+            let taper = 0.55 + 0.45 * sin(x / Double(count - 1) * .pi)
+            let bar = CALayer()
+            bar.backgroundColor = NSColor.white.cgColor
+            bar.cornerRadius = 1.5
+            bar.frame = CGRect(x: CGFloat(i) * 6, y: 0, width: 3, height: 22)
+            let low = 0.18 * taper, high = (0.55 + 0.4 * abs(sin(x * 1.7))) * taper
+            bar.transform = CATransform3DMakeScale(1, CGFloat(low), 1)
+            let anim = CABasicAnimation(keyPath: "transform.scale.y")
+            anim.fromValue = low
+            anim.toValue = high
+            anim.duration = 0.38 + 0.22 * abs(sin(x * 2.3))
+            anim.autoreverses = true
+            anim.repeatCount = .infinity
+            anim.timeOffset = 0.07 * x
+            anim.timingFunction = CAMediaTimingFunction(name: .easeInEaseOut)
+            anim.isRemovedOnCompletion = false
+            bar.add(anim, forKey: "pulse")
+            view.layer?.addSublayer(bar)
+        }
+        return view
+    }
+
+    func updateNSView(_ nsView: NSView, context: Context) {}
 }
 
 struct HistorySection: View {

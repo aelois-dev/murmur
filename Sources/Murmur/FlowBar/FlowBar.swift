@@ -242,21 +242,20 @@ struct WaveformBars: View {
 
 struct ProcessingDots: View {
     var tint: Color
-    @State private var phase = 0.0
+    @State private var animate = false
 
     var body: some View {
-        TimelineView(.animation) { timeline in
-            let t = timeline.date.timeIntervalSinceReferenceDate
-            HStack(spacing: 5) {
-                ForEach(0..<3) { i in
-                    let wave = (sin(t * 6 - Double(i) * 0.9) + 1) / 2
-                    Circle()
-                        .fill(tint.opacity(0.35 + 0.65 * wave))
-                        .frame(width: 5, height: 5)
-                        .offset(y: -2.5 * wave)
-                }
+        HStack(spacing: 5) {
+            ForEach(0..<3, id: \.self) { i in
+                Circle()
+                    .fill(tint)
+                    .frame(width: 5, height: 5)
+                    .opacity(animate ? 1 : 0.35)
+                    .offset(y: animate ? -2.5 : 0)
+                    .animation(.easeInOut(duration: 0.42).repeatForever(autoreverses: true).delay(Double(i) * 0.14), value: animate)
             }
         }
+        .onAppear { animate = true }
     }
 }
 

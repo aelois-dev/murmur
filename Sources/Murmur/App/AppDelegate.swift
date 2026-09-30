@@ -41,6 +41,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             EndToEndTest.run(audioDirectory: URL(fileURLWithPath: CommandLine.arguments[i + 1]), model: model, controller: controller)
         } else if let i = CommandLine.arguments.firstIndex(of: "--selftest"), i + 1 < CommandLine.arguments.count {
             SelfTest.run(casesPath: CommandLine.arguments[i + 1], model: model, controller: controller)
+        } else if ProcessInfo.processInfo.environment["MURMUR_NO_WINDOW"] != nil {
+            updateActivationPolicy()
         } else if model.settings.hasCompletedOnboarding {
             showHub()
         } else {

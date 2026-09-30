@@ -39,6 +39,15 @@ struct DictionaryView: View {
                 .transition(.move(edge: .top).combined(with: .opacity))
             }
 
+            HStack(spacing: 10) {
+                Toggle("", isOn: $model.settings.autoLearnWords).labelsHidden().toggleStyle(.switch).controlSize(.small).tint(Theme.accent)
+                VStack(alignment: .leading, spacing: 2) {
+                    Text("Learn from my corrections").font(.system(size: 13, weight: .medium))
+                    Text("When you fix a name or term Murmur typed, it's added here automatically.")
+                        .font(.system(size: 12)).foregroundStyle(Theme.secondary)
+                }
+            }
+
             if model.dictionary.isEmpty && !adding {
                 EmptyState(icon: "character.book.closed", title: "No words yet", message: "Add names and terms you use often — like your coworkers, products or technical words — so Murmur spells them right.")
             } else if !model.dictionary.isEmpty {

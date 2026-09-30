@@ -72,7 +72,7 @@ struct PillButtonStyle: ButtonStyle {
         switch kind {
         case .primary: Theme.ink
         case .secondary: Theme.ink
-        case .dark: Color.white
+        case .dark: Theme.background
         case .destructive: Theme.danger
         }
     }
@@ -81,7 +81,8 @@ struct PillButtonStyle: ButtonStyle {
         switch kind {
         case .primary: Theme.accentSoft
         case .secondary: Theme.card
-        case .dark: Color(nsColor: NSColor(hex: 0x1A1A1E))
+        // Ink-colored: black in light mode, near-white in dark mode, so it always stands out.
+        case .dark: Theme.ink
         case .destructive: Theme.card
         }
     }

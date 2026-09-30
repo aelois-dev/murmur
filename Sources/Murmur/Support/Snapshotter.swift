@@ -23,6 +23,9 @@ enum Snapshotter {
             }
         }
         let light = NSAppearance(named: .aqua)!
+        model.hubSection = .settings
+        render(SettingsView().environmentObject(model).frame(width: 784).background(Theme.background), size: NSSize(width: 784, height: 2300), appearance: light,
+               to: outputDirectory.appendingPathComponent("settings-full.png"))
         render(OnboardingView(onFinish: {}).environmentObject(model), size: NSSize(width: 760, height: 560), appearance: light,
                to: outputDirectory.appendingPathComponent("onboarding.png"))
 
