@@ -30,8 +30,42 @@ final class AudioRecorder: @unchecked Sendable {
     /// End-to-end tests inject audio here instead of using the microphone.
     static var injectedSamples: [Float]?
 
+    // Voice activity, used to start transcribing during pauses (before the key is released).
+    private var noiseFloor: Float = 0.02
+    private var lastVoiceUptime: TimeInterval = 0
+    private var voiceSeen = false
+
+    /// Uptime of the last buffer that contained speech.
+    var lastVoiceAt: TimeInterval {
+        if Self.injectedSamples != nil { return startedUptime }
+        lock.lock(); defer { lock.unlock() }
+        return lastVoiceUptime
+    }
+
+    /// How long the speaker has been quiet (0 until they've said something).
+    var silenceDuration: TimeInterval {
+        if Self.injectedSamples != nil { return 10 }
+        lock.lock(); defer { lock.unlock() }
+        return voiceSeen ? ProcessInfo.processInfo.systemUptime - lastVoiceUptime : 0
+    }
+
+    /// A copy of everything recorded so far.
+    func snapshot() -> [Float] {
+        if let injected = Self.injectedSamples { return injected }
+        lock.lock(); defer { lock.unlock() }
+        return samples
+    }
+
+    private var startedUptime: TimeInterval = 0
+
     func start(deviceUID: String?) throws {
         if isRecording { return }
+        startedUptime = ProcessInfo.processInfo.systemUptime
+        lock.lock()
+        noiseFloor = 0.02
+        voiceSeen = false
+        lastVoiceUptime = startedUptime
+        lock.unlock()
         if Self.injectedSamples != nil {
             isRecording = true
             startedAt = Date()
@@ -89,6 +123,12 @@ final class AudioRecorder: @unchecked Sendable {
         let rms = (sum / Float(chunk.count)).squareRoot()
         lock.lock()
         samples.append(contentsOf: chunk)
+        // Adaptive noise floor: follows quiet levels quickly, rises slowly.
+        noiseFloor = rms < noiseFloor ? rms : noiseFloor * 0.995 + rms * 0.005
+        if rms > max(0.006, noiseFloor * 3.5) {
+            voiceSeen = true
+            lastVoiceUptime = ProcessInfo.processInfo.systemUptime
+        }
         lock.unlock()
         onLevel?(rms)
     }

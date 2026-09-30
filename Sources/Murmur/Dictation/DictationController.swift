@@ -19,6 +19,19 @@ final class DictationController {
     var dryRunSink: ((DictationRecord) -> Void)?
     private var dryRunResult: DictationRecord?
     private var startContext: String?
+
+    /// Transcription started during a pause while the key is still held; reused if nothing was said after it.
+    struct SpeculativeResult {
+        var transcript: TranscriptionOutput
+        var output: TextPipeline.Output
+    }
+    private struct Speculation {
+        let takenAt: TimeInterval
+        let sampleCount: Int
+        let task: Task<SpeculativeResult?, Never>
+        var done = false
+    }
+    private var speculation: Speculation?
     let corrections = CorrectionWatcher()
 
     init(model: AppModel) {
@@ -151,8 +164,12 @@ final class DictationController {
         model.phase = .recording(mode)
         model.recordingStartedAt = Date()
         tickTimer?.invalidate()
+        speculation = nil
         tickTimer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { [weak self] _ in
-            Task { @MainActor in self?.send(.tick) }
+            Task { @MainActor in
+                self?.send(.tick)
+                self?.maybeSpeculate()
+            }
         }
         Log.write("Recording started (\(mode.rawValue)) in \(target.name ?? "unknown app")")
     }
@@ -179,14 +196,55 @@ final class DictationController {
         return samples
     }
 
+    private func maybeSpeculate() {
+        guard model.whisperStatus.isReady, case .recording(let mode) = model.phase, mode != .command else { return }
+        guard recorder.silenceDuration >= 0.45 else { return }
+        if let current = speculation {
+            // Already covers everything said so far, or still busy: nothing to do.
+            if recorder.lastVoiceAt <= current.takenAt { return }
+            if !current.done { return }
+        }
+        let samples = recorder.snapshot()
+        guard samples.count >= 16000 / 2 else { return }
+        let settings = model.settings, dictionary = model.dictionary, snippets = model.snippets
+        let target = self.target, textBefore = startContext
+        let polisher = model.llmStatus.isReady ? model.polisher : nil
+        let transcriber = model.transcriber
+        let takenAt = now
+        let task = Task<SpeculativeResult?, Never> { [weak self] in
+            defer { Task { @MainActor in if self?.speculation?.takenAt == takenAt { self?.speculation?.done = true } } }
+            guard let transcript = try? await transcriber.transcribe(samples, language: settings.language,
+                                                                     prompt: Self.speechPrompt(dictionary: dictionary, textBefore: textBefore)) else { return nil }
+            let category = AppCategory.category(forBundleID: target.bundleID, appName: target.name)
+            let output = await Task.detached(priority: .userInitiated) {
+                TextPipeline.process(raw: transcript.text, settings: settings, dictionary: dictionary, snippets: snippets,
+                                     category: category, appName: target.name, polisher: polisher, textBefore: textBefore)
+            }.value
+            return SpeculativeResult(transcript: transcript, output: output)
+        }
+        speculation = Speculation(takenAt: takenAt, sampleCount: samples.count, task: task)
+    }
+
     private func stopAndProcess(_ mode: RecordingMode) {
+        // Reuse the pause-time transcription only if nothing was said after it (checked two independent ways).
+        let candidate = mode != .command && speculation.map { recorder.lastVoiceAt <= $0.takenAt } == true ? speculation : nil
+        speculation = nil
         let samples = endRecording()
+        var reusable: Task<SpeculativeResult?, Never>?
+        if let candidate {
+            if AudioRecorder.injectedSamples != nil || !AudioAnalysis.tailHasSpeech(samples, from: candidate.sampleCount) {
+                reusable = candidate.task
+            } else {
+                Log.write("Discarded pause-time transcription: speech after snapshot")
+            }
+        }
         if model.settings.pushToTalkKey == .fn { inputSourceGuard.restoreSoon() }
         if model.settings.soundEffects { Sounds.shared.play(.stop, volume: model.settings.soundVolume) }
-        process(samples, mode: mode, target: target, textBefore: startContext)
+        process(samples, mode: mode, target: target, textBefore: startContext, speculative: reusable)
     }
 
     private func cancel(_ reason: HotkeyStateMachine.CancelReason) {
+        speculation = nil
         let samples = endRecording()
         model.phase = .idle
         switch reason {
@@ -215,7 +273,8 @@ final class DictationController {
 
     // MARK: - Processing
 
-    func process(_ samples: [Float], mode: RecordingMode, target: TargetApp, textBefore: String? = nil) {
+    func process(_ samples: [Float], mode: RecordingMode, target: TargetApp, textBefore: String? = nil,
+                 speculative: Task<SpeculativeResult?, Never>? = nil) {
         model.phase = .processing(mode)
         let audioDuration = Double(samples.count) / 16000
         let settings = model.settings
@@ -240,13 +299,20 @@ final class DictationController {
 
             let started = Date()
             let transcript: TranscriptionOutput
-            do {
-                transcript = try await model.transcriber.transcribe(samples, language: settings.language,
-                                                                   prompt: Self.speechPrompt(dictionary: dictionary, textBefore: textBefore))
-            } catch {
-                Log.write("Transcription failed: \(error)")
-                model.showNotice("Transcription failed", kind: .error)
-                return
+            var precomputed: TextPipeline.Output?
+            if let speculative, let result = await speculative.value {
+                transcript = result.transcript
+                precomputed = result.output
+                Log.write("Used pause-time transcription (ready \(String(format: "%.2f", Date().timeIntervalSince(started)))s after release)")
+            } else {
+                do {
+                    transcript = try await model.transcriber.transcribe(samples, language: settings.language,
+                                                                       prompt: Self.speechPrompt(dictionary: dictionary, textBefore: textBefore))
+                } catch {
+                    Log.write("Transcription failed: \(error)")
+                    model.showNotice("Transcription failed", kind: .error)
+                    return
+                }
             }
             Log.write("Heard (\(String(format: "%.2f", transcript.seconds))s for \(String(format: "%.1f", audioDuration))s audio): \(transcript.text)")
             guard !transcript.text.isEmpty else {
@@ -263,10 +329,16 @@ final class DictationController {
 
             let category = AppCategory.category(forBundleID: target.bundleID, appName: target.name)
             let polisher = model.llmStatus.isReady ? model.polisher : nil
-            let output = await Task.detached(priority: .userInitiated) {
-                TextPipeline.process(raw: transcript.text, settings: settings, dictionary: dictionary, snippets: snippets,
-                                     category: category, appName: target.name, polisher: polisher, textBefore: textBefore)
-            }.value
+            let computed: TextPipeline.Output
+            if let precomputed {
+                computed = precomputed
+            } else {
+                computed = await Task.detached(priority: .userInitiated) {
+                    TextPipeline.process(raw: transcript.text, settings: settings, dictionary: dictionary, snippets: snippets,
+                                         category: category, appName: target.name, polisher: polisher, textBefore: textBefore)
+                }.value
+            }
+            let output = computed
             guard !output.text.isEmpty else { return }
             if let reason = output.rejectedAIReason { Log.write("AI edit discarded: \(reason)") }
 

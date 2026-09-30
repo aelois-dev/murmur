@@ -117,6 +117,19 @@ enum EndToEndTest {
             check("smart spacing + backtrack", textView.string == "So I think we should meet tomorrow at noon. Let's do coffee at 3.", "text=\(textView.string.debugDescription)")
 
             guard await ensureFocus() else { log.append("ABORT lost focus"); finish(log, passed: passed, total: total + 1, dir: audioDirectory); return }
+            // 2b. Speaking, pausing, then releasing: text should appear almost immediately (pause-time transcription).
+            textView.string = ""
+            AudioRecorder.injectedSamples = samples("01_simple.wav")
+            postFn(down: true)
+            try? await Task.sleep(nanoseconds: 2_500_000_000)
+            postFn(down: false)
+            let released = Date()
+            for _ in 0..<60 where textView.string.isEmpty { try? await Task.sleep(nanoseconds: 25_000_000) }
+            let latency = Date().timeIntervalSince(released)
+            await waitIdle()
+            check("instant text after a pause", textView.string == "Hey, can you send me the quarterly report by Friday? Thanks." && latency < 0.6,
+                  "latency=\(String(format: "%.2f", latency))s text=\(textView.string.debugDescription)")
+
             // 3. Hands-free by double-tapping fn, then tap to finish.
             textView.string = ""
             AudioRecorder.injectedSamples = samples("06_question.wav")

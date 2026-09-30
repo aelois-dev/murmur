@@ -289,3 +289,33 @@ import Testing
         #expect(ContinuationFormatter.adapt("I think so.", before: "well ") == "I think so.")
     }
 }
+
+@Suite struct AudioAnalysisTests {
+    func tone(_ seconds: Double, amp: Float) -> [Float] {
+        (0..<Int(seconds * 16000)).map { amp * Float(sin(Double($0) * 2 * .pi * 220 / 16000)) }
+    }
+    func noise(_ seconds: Double, amp: Float) -> [Float] {
+        var seed: UInt32 = 7
+        return (0..<Int(seconds * 16000)).map { _ in seed = seed &* 1664525 &+ 1013904223; return amp * (Float(seed % 2000) / 1000 - 1) }
+    }
+
+    @Test func tailSpeechDetected() {
+        let audio = noise(0.5, amp: 0.002) + tone(1.0, amp: 0.2) + noise(0.5, amp: 0.002) + tone(0.3, amp: 0.1)
+        #expect(AudioAnalysis.tailHasSpeech(audio, from: Int(1.6 * 16000)))
+    }
+
+    @Test func silentTailIgnored() {
+        let audio = noise(0.5, amp: 0.002) + tone(1.0, amp: 0.2) + noise(0.8, amp: 0.002)
+        #expect(!AudioAnalysis.tailHasSpeech(audio, from: Int(1.6 * 16000)))
+    }
+
+    @Test func quietSpeechInNoisyRoomDetected() {
+        let audio = noise(0.6, amp: 0.02) + tone(1.0, amp: 0.25) + noise(0.4, amp: 0.02) + tone(0.4, amp: 0.1)
+        #expect(AudioAnalysis.tailHasSpeech(audio, from: Int(1.7 * 16000)))
+    }
+
+    @Test func silenceHasNoSpeech() {
+        #expect(!AudioAnalysis.hasSpeech(noise(1.0, amp: 0.001)))
+        #expect(AudioAnalysis.hasSpeech(noise(0.3, amp: 0.001) + tone(0.6, amp: 0.2)))
+    }
+}
