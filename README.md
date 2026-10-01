@@ -57,7 +57,10 @@ The models are already downloaded and prepared, so dictation works straight away
 
 ## Good to know
 
-- The app is signed "ad-hoc" (no Apple developer account). macOS ties Accessibility permission to the exact build, so **after rebuilding, remove Murmur from System Settings → Privacy & Security → Accessibility and add it again**. To avoid this, sign into Xcode with your Apple ID; the build script then uses your free *Apple Development* certificate automatically.
+- **AirPods/Bluetooth mics** take about 1.5 s to switch on. The start chime plays when the mic is actually listening (the Flow bar shows a pulsing mic until then), so wait for it. Afterwards the mic stays ready for 1 minute so back-to-back dictations start instantly (Settings → Keep microphone ready).
+- **Your words are never reworded.** The AI may only drop fillers, fix punctuation and apply real self-corrections; anything else it changed is put back.
+
+- The app is signed with your **Apple Development** certificate (team YJTAS82KYW), so macOS keeps its Accessibility and Microphone permissions across rebuilds. The certificate expires on 1 Oct 2027; renew it in Xcode → Settings → Accounts → Manage Certificates. The build script falls back to ad-hoc signing if no certificate is found, and then permissions must be re-granted after every rebuild.
 - If you switch to a speech model that hasn't been used before, the first load takes several minutes while macOS prepares it for the Neural Engine. After that it loads in about 5 s.
 - Memory use is about 4–5 GB with the 4B AI model. Pick *Qwen3 1.7B* in Settings → AI editing for a lighter, faster (slightly less clever) editor.
 - Logs: `~/Library/Application Support/Murmur/murmur.log`. Data (history, dictionary, snippets, settings) lives in the same folder.
