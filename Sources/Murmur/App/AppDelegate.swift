@@ -1,4 +1,5 @@
 import AppKit
+import AVFoundation
 import Combine
 import MurmurCore
 import SwiftUI
@@ -19,7 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
             NSApp.terminate(nil)
             return
         }
-        Log.write("Murmur \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev") launched")
+        Log.write("Murmur \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "dev") (\(Bundle.main.infoDictionary?["CFBundleVersion"] as? String ?? "?")) launched — accessibility: \(AXIsProcessTrusted()), microphone: \(AVCaptureDevice.authorizationStatus(for: .audio) == .authorized)")
         buildMainMenu()
         controller = DictationController(model: model)
         controller.start()

@@ -211,6 +211,7 @@ final class DictationController {
     }
 
     private func abortStart(_ message: String, action: (String, FlowNotice.Action)) {
+        Log.write("Dictation not started: \(message)")
         machine.reset()
         model.phase = .idle
         model.showNotice(message, kind: .error, actions: [action], duration: 4)
