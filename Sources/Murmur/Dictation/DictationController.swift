@@ -265,6 +265,8 @@ final class DictationController {
     }
 
     private func stopAndProcess(_ mode: RecordingMode) {
+        let heldFor = Date().timeIntervalSince(model.recordingStartedAt ?? Date())
+        let wasLive = model.micLive
         // Reuse the pause-time transcription only if nothing was said after it (checked two independent ways).
         let candidate = mode != .command && speculation.map { recorder.lastVoiceAt <= $0.takenAt } == true ? speculation : nil
         speculation = nil
@@ -279,6 +281,13 @@ final class DictationController {
         }
         if model.settings.pushToTalkKey == .fn { inputSourceGuard.restoreSoon() }
         if model.settings.soundEffects { Sounds.shared.play(.stop, volume: model.settings.soundVolume) }
+        let captured = Double(samples.count) / 16000
+        Log.write("Recording stopped after \(String(format: "%.1f", heldFor))s held, \(String(format: "%.1f", captured))s captured (mic live: \(wasLive))")
+        // Released before (or right as) a slow Bluetooth mic came on: say so instead of silently doing nothing.
+        if captured < 0.4 && heldFor > 0.6 && AudioRecorder.injectedSamples == nil {
+            model.showNotice(wasLive ? "Didn't catch that — keep holding while you speak" : "The mic was still waking up — wait for the chime, then speak",
+                             kind: .info, duration: 4)
+        }
         process(samples, mode: mode, target: target, textBefore: startContext, speculative: reusable)
     }
 
