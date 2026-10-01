@@ -91,6 +91,8 @@ final class AppModel: ObservableObject {
     @Published var hubSection: HubSection = .home
     @Published var flowBarHovering = false
     @Published var recordingStartedAt: Date?
+    /// The microphone is actually delivering audio for the current recording.
+    @Published var micLive = false
     @Published var historySearch = ""
 
     let transcriber = Transcriber()
@@ -106,6 +108,7 @@ final class AppModel: ObservableObject {
     /// Called when shortcut-related settings change so the hotkey monitor can reconfigure.
     var onShortcutSettingsChanged: (() -> Void)?
     var onFlowBarSettingsChanged: (() -> Void)?
+    var onMicSettingsChanged: (() -> Void)?
 
     init() {
         settings = settingsStore.load() ?? AppSettings()
@@ -138,6 +141,7 @@ final class AppModel: ObservableObject {
             onShortcutSettingsChanged?()
         }
         if old.showFlowBarAlways != settings.showFlowBarAlways { onFlowBarSettingsChanged?() }
+        if old.micReadiness != settings.micReadiness || old.microphoneUID != settings.microphoneUID { onMicSettingsChanged?() }
         if old.whisperModel != settings.whisperModel { loadWhisper() }
         if old.llmModel != settings.llmModel || old.aiEditing != settings.aiEditing { loadLLM() }
         if old.launchAtLogin != settings.launchAtLogin { applyLaunchAtLogin() }

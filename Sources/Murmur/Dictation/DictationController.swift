@@ -37,6 +37,7 @@ final class DictationController {
     init(model: AppModel) {
         self.model = model
         model.onShortcutSettingsChanged = { [weak self] in self?.configureHotkeys() }
+        model.onMicSettingsChanged = { [weak self] in self?.applyMicReadiness(deviceChanged: true) }
         corrections.onLearn = { [weak model] correction in
             guard let model, model.settings.autoLearnWords else { return }
             guard !model.dictionary.contains(where: { $0.word == correction.to }) else { return }
@@ -52,9 +53,25 @@ final class DictationController {
 
     func start() {
         configureHotkeys()
+        applyMicReadiness(deviceChanged: false)
         hotkeys.handler = { [weak self] signal in self?.handle(signal) ?? false }
         hotkeys.isRecording = { [weak self] in self?.machine.isRecording ?? false }
         if !hotkeys.start() { waitForAccessibility() }
+    }
+
+    /// Seconds to keep the mic open after a dictation (Bluetooth mics are slow to wake).
+    private var warmSeconds: TimeInterval { model.settings.micReadiness.seconds(isBluetooth: recorder.isBluetoothInput) }
+
+    /// Opens or closes the always-ready microphone to match the setting.
+    func applyMicReadiness(deviceChanged: Bool) {
+        guard !recorder.isRecording else { return }
+        if deviceChanged { recorder.shutdown() }
+        model.refreshPermissions()
+        if model.settings.micReadiness == .always && model.micAuthorized {
+            recorder.prewarm(deviceUID: model.settings.microphoneUID)
+        } else if model.settings.micReadiness == .off {
+            recorder.shutdown()
+        }
     }
 
     func configureHotkeys() {
@@ -145,9 +162,18 @@ final class DictationController {
         cancelled = nil
         target = TargetApp.current()
         startContext = nil
-        if model.settings.soundEffects { Sounds.shared.play(.start, volume: model.settings.soundVolume) }
+        model.micLive = false
         recorder.onLevel = { [weak self] level in
             Task { @MainActor in self?.model.pushLevel(level) }
+        }
+        // The chime means "talk now", so it plays when the mic is really live (AirPods take ~1 s to switch on).
+        recorder.onLive = { [weak self] in
+            let work = { @MainActor in
+                guard let self, self.recorder.isRecording, !self.model.micLive else { return }
+                self.model.micLive = true
+                if self.model.settings.soundEffects { Sounds.shared.play(.start, volume: self.model.settings.soundVolume) }
+            }
+            if Thread.isMainThread { MainActor.assumeIsolated { work() } } else { DispatchQueue.main.async { work() } }
         }
         do {
             try recorder.start(deviceUID: model.settings.microphoneUID)
@@ -166,6 +192,10 @@ final class DictationController {
         }
         model.phase = .recording(mode)
         model.recordingStartedAt = Date()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) { [weak self] in
+            guard let self, self.recorder.isRecording, !self.model.micLive else { return }
+            self.model.showNotice("Waiting for the microphone… check your AirPods or mic are connected", kind: .info, duration: 4)
+        }
         // Accessibility reads can be slow in some apps, so they happen after the microphone is already running.
         corrections.check()
         if model.settings.contextAwareness { startContext = TextInserter.focusInfo().textBefore }
@@ -195,7 +225,8 @@ final class DictationController {
     private func endRecording() -> [Float] {
         tickTimer?.invalidate()
         tickTimer = nil
-        let samples = recorder.stop()
+        let samples = recorder.stop(keepWarmFor: warmSeconds)
+        model.micLive = false
         SystemAudio.muteOutput(false)
         model.resetLevels()
         model.recordingStartedAt = nil
@@ -350,6 +381,7 @@ final class DictationController {
             let output = computed
             guard !output.text.isEmpty else { return }
             if let reason = output.rejectedAIReason { Log.write("AI edit discarded: \(reason)") }
+            if output.restoredWords { Log.write("AI reworded something; restored the speaker's words") }
 
             if dryRunSink != nil {
                 dryRunResult = DictationRecord(rawText: transcript.text, text: output.text, appName: target.name, appBundleID: target.bundleID,

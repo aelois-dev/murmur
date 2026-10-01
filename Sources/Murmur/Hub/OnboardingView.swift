@@ -188,7 +188,7 @@ struct OnboardingView: View {
             HStack(spacing: 6) {
                 Text("Click the box, hold").font(.system(size: 13)).foregroundStyle(Theme.secondary)
                 Keycap(label: model.settings.pushToTalkKey.shortLabel)
-                Text("and say something like “Hey, this is my first message with Murmur.”").font(.system(size: 13)).foregroundStyle(Theme.secondary)
+                Text("and after the chime, say something like “Hey, this is my first dictation and it should come out nicely punctuated.”").font(.system(size: 13)).foregroundStyle(Theme.secondary)
             }
             TextEditor(text: $practice)
                 .font(.system(size: 15))

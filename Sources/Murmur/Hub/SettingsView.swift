@@ -51,7 +51,14 @@ struct SettingsView: View {
                 }
                 .padding(.horizontal, 16)
                 .padding(.vertical, 13)
-                SettingsRow(title: "Sound effects", detail: "Soft chimes when dictation starts and stops.") {
+                SettingsRow(title: "Keep microphone ready", detail: "Bluetooth headphones like AirPods take about a second to switch their mic on, which can cut off your first words. Keeping it ready makes dictation start instantly — but while it's ready, AirPods play audio in lower \"call\" quality and the orange mic indicator stays on. Automatic keeps Bluetooth mics ready for a minute after you dictate.") {
+                    Picker("", selection: $model.settings.micReadiness) {
+                        ForEach(MicReadiness.allCases) { Text($0.title).tag($0) }
+                    }
+                    .labelsHidden()
+                    .frame(width: 210)
+                }
+                SettingsRow(title: "Sound effects", detail: "A chime when the mic is listening, and another when dictation stops. With AirPods, wait for the chime before you speak.") {
                     HStack(spacing: 10) {
                         if model.settings.soundEffects {
                             Slider(value: $model.settings.soundVolume, in: 0.05...1) { editing in

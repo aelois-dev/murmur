@@ -196,12 +196,20 @@ struct FlowBarView: View {
                     .transition(.opacity)
             }
         case .recording(.pushToTalk):
-            WaveformBars(levels: model.levels, color: .white, barWidth: 3, spacing: 3, maxHeight: 20)
-                .transition(.opacity)
+            if model.micLive {
+                WaveformBars(levels: model.levels, color: .white, barWidth: 3, spacing: 3, maxHeight: 20)
+                    .transition(.opacity)
+            } else {
+                MicConnecting(tint: .white)
+            }
         case .recording(.handsFree):
             HStack(spacing: 8) {
                 CircleButton(symbol: "xmark", background: Color.white.opacity(0.14), foreground: .white, action: actions.cancel)
-                WaveformBars(levels: Array(model.levels.suffix(11)), color: .white, barWidth: 3, spacing: 2.5, maxHeight: 18)
+                if model.micLive {
+                    WaveformBars(levels: Array(model.levels.suffix(11)), color: .white, barWidth: 3, spacing: 2.5, maxHeight: 18)
+                } else {
+                    MicConnecting(tint: .white).frame(width: 60)
+                }
                 CircleButton(symbol: "stop.fill", background: Color(red: 1, green: 0.27, blue: 0.23), foreground: .white, action: actions.stop)
             }
             .padding(.horizontal, 5)
@@ -210,7 +218,11 @@ struct FlowBarView: View {
                 Image(systemName: "wand.and.stars")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Color(red: 0.78, green: 0.7, blue: 1))
-                WaveformBars(levels: Array(model.levels.suffix(11)), color: Color(red: 0.8, green: 0.73, blue: 1), barWidth: 3, spacing: 2.5, maxHeight: 18)
+                if model.micLive {
+                    WaveformBars(levels: Array(model.levels.suffix(11)), color: Color(red: 0.8, green: 0.73, blue: 1), barWidth: 3, spacing: 2.5, maxHeight: 18)
+                } else {
+                    MicConnecting(tint: Color(red: 0.8, green: 0.73, blue: 1)).frame(width: 60)
+                }
             }
         case .processing(let mode):
             ProcessingDots(tint: mode == .command ? Color(red: 0.8, green: 0.73, blue: 1) : .white)
@@ -237,6 +249,21 @@ struct WaveformBars: View {
             }
         }
         .animation(.linear(duration: 0.08), value: levels)
+    }
+}
+
+/// Shown while a slow (Bluetooth) mic is still switching on — the chime plays once it's live.
+struct MicConnecting: View {
+    var tint: Color
+    @State private var pulse = false
+
+    var body: some View {
+        Image(systemName: "mic.fill")
+            .font(.system(size: 12, weight: .semibold))
+            .foregroundStyle(tint)
+            .opacity(pulse ? 1 : 0.3)
+            .animation(.easeInOut(duration: 0.5).repeatForever(autoreverses: true), value: pulse)
+            .onAppear { pulse = true }
     }
 }
 

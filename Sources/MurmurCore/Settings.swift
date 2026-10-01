@@ -38,6 +38,33 @@ public enum HotkeyChoice: String, Codable, CaseIterable, Sendable, Identifiable 
     }
 }
 
+/// How long the microphone stays open after a dictation so the next one starts instantly.
+public enum MicReadiness: String, Codable, CaseIterable, Sendable, Identifiable {
+    case automatic, off, oneMinute, fiveMinutes, always
+    public var id: String { rawValue }
+
+    public var title: String {
+        switch self {
+        case .automatic: "Automatic"
+        case .off: "Off"
+        case .oneMinute: "1 minute after dictating"
+        case .fiveMinutes: "5 minutes after dictating"
+        case .always: "Always"
+        }
+    }
+
+    /// Seconds to keep the mic open after a dictation; `isBluetooth` matters for `.automatic`.
+    public func seconds(isBluetooth: Bool) -> TimeInterval {
+        switch self {
+        case .automatic: isBluetooth ? 60 : 0
+        case .off: 0
+        case .oneMinute: 60
+        case .fiveMinutes: 300
+        case .always: .infinity
+        }
+    }
+}
+
 public struct AppSettings: Codable, Equatable, Sendable {
     // Shortcuts
     public var pushToTalkKey: HotkeyChoice = .fn
@@ -50,6 +77,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var soundEffects = true
     public var soundVolume: Double = 0.35
     public var pauseMediaWhileDictating = false
+    public var micReadiness: MicReadiness = .automatic
 
     // Transcription
     public var whisperModel: String = ModelDefaults.whisperModel
@@ -99,6 +127,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         soundEffects = v(.soundEffects, soundEffects)
         soundVolume = v(.soundVolume, soundVolume)
         pauseMediaWhileDictating = v(.pauseMediaWhileDictating, pauseMediaWhileDictating)
+        micReadiness = v(.micReadiness, micReadiness)
         whisperModel = v(.whisperModel, whisperModel)
         language = (try? c.decodeIfPresent(String.self, forKey: .language)) ?? nil
         smartFormatting = v(.smartFormatting, smartFormatting)

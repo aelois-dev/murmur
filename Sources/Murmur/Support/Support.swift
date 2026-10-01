@@ -137,6 +137,17 @@ struct AudioInputDevice: Identifiable, Hashable {
 
     static func deviceID(forUID uid: String) -> AudioDeviceID? { all().first { $0.uid == uid }?.id }
 
+    static func name(of id: AudioDeviceID) -> String? { stringProperty(id, kAudioObjectPropertyName) }
+
+    /// AirPods and other Bluetooth headsets need ~1 s to switch into microphone mode.
+    static func isBluetooth(_ id: AudioDeviceID) -> Bool {
+        var address = AudioObjectPropertyAddress(mSelector: kAudioDevicePropertyTransportType, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+        var transport: UInt32 = 0
+        var size = UInt32(MemoryLayout<UInt32>.size)
+        guard AudioObjectGetPropertyData(id, &address, 0, nil, &size, &transport) == noErr else { return false }
+        return transport == kAudioDeviceTransportTypeBluetooth || transport == kAudioDeviceTransportTypeBluetoothLE
+    }
+
     static var defaultInputName: String? {
         var address = AudioObjectPropertyAddress(mSelector: kAudioHardwarePropertyDefaultInputDevice, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
         var id = AudioDeviceID(0)

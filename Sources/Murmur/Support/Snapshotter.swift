@@ -41,6 +41,7 @@ enum Snapshotter {
         let states: [(String, DictationPhase, Bool, FlowNotice?)] = [
             ("idle", .idle, false, nil),
             ("hover", .idle, true, nil),
+            ("connecting", .recording(.pushToTalk), false, nil),
             ("ptt", .recording(.pushToTalk), false, nil),
             ("handsfree", .recording(.handsFree), false, nil),
             ("command", .recording(.command), false, nil),
@@ -50,6 +51,7 @@ enum Snapshotter {
         model.levels = [0.1, 0.25, 0.5, 0.8, 0.6, 0.9, 0.7, 0.4, 0.65, 0.85, 0.5, 0.3, 0.45, 0.2, 0.1]
         for (name, phase, hover, notice) in states {
             model.phase = phase
+            model.micLive = name != "connecting"
             model.flowBarHovering = hover
             model.notice = notice
             let view = FlowBarView(actions: actions).environmentObject(model)
