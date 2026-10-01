@@ -15,8 +15,12 @@ final class MicMeter: ObservableObject {
     /// Snapshots render this view without touching the microphone.
     static var previewOnly = false
 
+    /// Which device the meter opened (UID, or the default device's name).
+    private(set) var deviceKey: String?
+
     func start(uid: String?, duration: TimeInterval? = nil) {
         stop()
+        deviceKey = uid ?? AudioInputDevice.defaultInputName ?? ""
         if Self.previewOnly { level = 0.55; heardVoice = true; running = true; return }
         heardVoice = false
         failed = false
@@ -141,9 +145,12 @@ struct MicTestView: View {
         }
     }
 
-    /// A device connected or the default changed: reopen the mic so the meter follows it.
+    /// A device connected or the default changed: reopen the mic so the meter follows it —
+    /// but only if the effective device really changed (reopening AirPods costs ~1.5 s each time).
     private func restartIfNeeded() {
         guard meter.running || (autoStart && model.micAuthorized) else { return }
+        let effective = model.settings.microphoneUID ?? audio.defaultInputName ?? ""
+        guard effective != meter.deviceKey else { return }
         meter.start(uid: model.settings.microphoneUID, duration: autoStart ? nil : 12)
     }
 }

@@ -199,14 +199,15 @@ final class AudioRecorder: @unchecked Sendable {
         guard let converter = AVAudioConverter(from: format, to: targetFormat) else { throw AudioRecorderError.formatUnavailable }
         self.converter = converter
 
-        // Identify the device for logging and warm-up decisions.
-        if let unit = input.audioUnit {
-            var current = AudioDeviceID(0)
-            var size = UInt32(MemoryLayout<AudioDeviceID>.size)
-            if AudioUnitGetProperty(unit, kAudioOutputUnitProperty_CurrentDevice, kAudioUnitScope_Global, 0, &current, &size) == noErr {
-                isBluetoothInput = AudioInputDevice.isBluetooth(current)
-                inputName = AudioInputDevice.name(of: current)
-            }
+        // Identify the real device for logging and warm-up decisions. (With the system default, the engine's own
+        // device is a private "CADefaultDeviceAggregate", so ask Core Audio which input that actually is.)
+        let realDevice = deviceUID.flatMap { AudioInputDevice.deviceID(forUID: $0) } ?? AudioInputDevice.defaultInputID
+        if let realDevice {
+            isBluetoothInput = AudioInputDevice.isBluetooth(realDevice)
+            inputName = AudioInputDevice.name(of: realDevice)
+        } else {
+            isBluetoothInput = false
+            inputName = nil
         }
 
         lock.lock()
