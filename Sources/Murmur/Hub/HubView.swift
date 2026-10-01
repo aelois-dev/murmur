@@ -103,7 +103,9 @@ struct ReadinessCard: View {
                 Label("Finish setup", systemImage: "exclamationmark.circle.fill")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(Theme.warning)
-                Text(!model.micAuthorized ? "Allow microphone access to start dictating." : "Allow Accessibility so Murmur can hear your shortcut and paste text.")
+                Text(!model.micAuthorized ? "Allow microphone access to start dictating."
+                     : model.accessibilityNeedsRegrant ? "Murmur was updated — re-allow Accessibility in Settings."
+                     : "Allow Accessibility so Murmur can hear your shortcut and paste text.")
                     .font(.system(size: 11))
                     .foregroundStyle(Theme.secondary)
                     .fixedSize(horizontal: false, vertical: true)

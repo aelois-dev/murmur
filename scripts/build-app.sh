@@ -17,8 +17,8 @@ fi
 rm -f "$BUILD_LOG"
 BIN_DIR="$(swift build -c "$CONFIG" --show-bin-path)"
 
-APP="build/Murmur.app"
-rm -rf "$APP"
+APP=".build/app/Murmur.app"
+rm -rf "$APP" build/Murmur.app
 mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources" "$APP/Contents/Frameworks"
 cp "$BIN_DIR/Murmur" "$APP/Contents/MacOS/Murmur"
 cp -R Vendor/llama.xcframework/macos-arm64_x86_64/llama.framework "$APP/Contents/Frameworks/"

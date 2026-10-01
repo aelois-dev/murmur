@@ -140,7 +140,7 @@ struct SettingsView: View {
                         Button("Allow") { model.requestMicrophone() }.buttonStyle(PillButtonStyle(kind: .primary, compact: true))
                     }
                 }
-                SettingsRow(title: "Accessibility", detail: "To detect your shortcut in every app and paste text where your cursor is.") {
+                SettingsRow(title: "Accessibility", detail: model.accessibilityNeedsRegrant ? AppModel.regrantHelp : "To detect your shortcut in every app and paste text where your cursor is.") {
                     if model.accessibilityTrusted { StatusBadge(ok: true, text: "Allowed") } else {
                         Button("Open System Settings") {
                             Permissions.promptAccessibility()

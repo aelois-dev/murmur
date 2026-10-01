@@ -142,7 +142,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         let key = model.settings.pushToTalkKey.shortLabel
         let status: String
         switch model.whisperStatus {
-        case .ready: status = model.accessibilityTrusted ? "Ready — hold \(key) to dictate" : "Needs Accessibility access to use shortcuts"
+        case .ready: status = model.accessibilityTrusted ? "Ready — hold \(key) to dictate"
+            : model.accessibilityNeedsRegrant ? "Updated — re-allow Accessibility (Settings)" : "Needs Accessibility access to use shortcuts"
         case .downloading(let p): status = "Downloading speech model… \(Int(p * 100))%"
         case .loading: status = "Preparing speech model…"
         case .notDownloaded: status = "Speech model not downloaded"

@@ -190,3 +190,44 @@ enum SystemAudio {
         }
     }
 }
+
+/// Keeps the microphone list current as devices come and go (AirPods connecting, USB mics unplugged…).
+@MainActor
+final class AudioDeviceMonitor: ObservableObject {
+    static let shared = AudioDeviceMonitor()
+    @Published private(set) var devices: [AudioInputDevice] = AudioInputDevice.all()
+    @Published private(set) var defaultInputName: String? = AudioInputDevice.defaultInputName
+
+    private init() {
+        let system = AudioObjectID(kAudioObjectSystemObject)
+        for selector in [kAudioHardwarePropertyDevices, kAudioHardwarePropertyDefaultInputDevice] {
+            var address = AudioObjectPropertyAddress(mSelector: selector, mScope: kAudioObjectPropertyScopeGlobal, mElement: kAudioObjectPropertyElementMain)
+            AudioObjectAddPropertyListenerBlock(system, &address, DispatchQueue.main) { _, _ in
+                MainActor.assumeIsolated {
+                    AudioDeviceMonitor.shared.refresh()
+                    // Bluetooth devices finish publishing their input stream a moment after they appear.
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) { MainActor.assumeIsolated { AudioDeviceMonitor.shared.refresh() } }
+                }
+            }
+        }
+    }
+
+    func refresh() {
+        let list = AudioInputDevice.all()
+        let name = AudioInputDevice.defaultInputName
+        if list != devices { devices = list }
+        if name != defaultInputName { defaultInputName = name }
+    }
+
+    /// Real microphones (not virtual loopback devices like Teams or BlackHole).
+    var realDevices: [AudioInputDevice] { devices.filter { !AudioInputDevice.isVirtual($0.name) } }
+}
+
+extension AudioInputDevice {
+    static let virtualMarkers = ["teams audio", "blackhole", "loopback", "soundflower", "zoomaudio", "zoom audio", "aggregate", "multi-output", "virtual"]
+
+    static func isVirtual(_ name: String) -> Bool {
+        let lower = name.lowercased()
+        return virtualMarkers.contains { lower.contains($0) }
+    }
+}

@@ -55,24 +55,24 @@ final class MicMeter: ObservableObject {
 struct MicTestView: View {
     @EnvironmentObject var model: AppModel
     @StateObject private var meter = MicMeter()
+    @ObservedObject private var audio = AudioDeviceMonitor.shared
     var autoStart: Bool
-    @State private var devices = AudioInputDevice.all()
 
-    static let virtualMarkers = ["teams audio", "blackhole", "loopback", "soundflower", "zoomaudio", "zoom audio", "aggregate", "multi-output", "virtual"]
+    private var devices: [AudioInputDevice] { audio.devices }
 
-    static func isVirtual(_ name: String) -> Bool {
-        let lower = name.lowercased()
-        return virtualMarkers.contains { lower.contains($0) }
-    }
+    static func isVirtual(_ name: String) -> Bool { AudioInputDevice.isVirtual(name) }
 
     private var currentName: String {
         if let uid = model.settings.microphoneUID, let d = devices.first(where: { $0.uid == uid }) { return d.name }
-        return AudioInputDevice.defaultInputName ?? "None"
+        return audio.defaultInputName ?? "None"
     }
 
     private var warning: String? {
-        if devices.isEmpty || devices.allSatisfy({ Self.isVirtual($0.name) }) {
-            return "No microphone found. Connect AirPods, a headset, a webcam or a USB mic (a Mac mini has no built-in mic)."
+        if audio.realDevices.isEmpty {
+            return "No microphone connected. Connect AirPods (Control Center → Sound), a headset, a webcam or a USB mic — a Mac mini has no built-in mic. AirPods can hop to your iPhone, so check they're connected to this Mac."
+        }
+        if let uid = model.settings.microphoneUID, !devices.contains(where: { $0.uid == uid }) {
+            return "The microphone you picked isn't connected right now, so Murmur will use the system default."
         }
         if Self.isVirtual(currentName) {
             return "“\(currentName)” is a virtual device, not a real microphone. Pick your headset or mic above."
@@ -86,7 +86,7 @@ struct MicTestView: View {
             HStack(spacing: 10) {
                 Image(systemName: "mic.fill").foregroundStyle(Theme.accent)
                 Picker("", selection: $model.settings.microphoneUID) {
-                    Text("System default (\(AudioInputDevice.defaultInputName ?? "none"))").tag(String?.none)
+                    Text("System default (\(audio.defaultInputName ?? "none"))").tag(String?.none)
                     ForEach(devices) { d in
                         Text(Self.isVirtual(d.name) ? "\(d.name) (virtual)" : d.name).tag(String?.some(d.uid))
                     }
@@ -127,9 +127,11 @@ struct MicTestView: View {
             }
         }
         .onAppear {
-            devices = AudioInputDevice.all()
+            audio.refresh()
             if autoStart && model.micAuthorized { meter.start(uid: model.settings.microphoneUID) }
         }
+        .onChange(of: audio.devices) { _, _ in restartIfNeeded() }
+        .onChange(of: audio.defaultInputName) { _, _ in restartIfNeeded() }
         .onDisappear { meter.stop() }
         .onChange(of: model.settings.microphoneUID) { _, uid in
             if meter.running || autoStart { meter.start(uid: uid, duration: autoStart ? nil : 12) }
@@ -137,5 +139,11 @@ struct MicTestView: View {
         .onChange(of: model.micAuthorized) { _, ok in
             if ok && autoStart { meter.start(uid: model.settings.microphoneUID) }
         }
+    }
+
+    /// A device connected or the default changed: reopen the mic so the meter follows it.
+    private func restartIfNeeded() {
+        guard meter.running || (autoStart && model.micAuthorized) else { return }
+        meter.start(uid: model.settings.microphoneUID, duration: autoStart ? nil : 12)
     }
 }

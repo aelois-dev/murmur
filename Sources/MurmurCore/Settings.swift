@@ -73,6 +73,8 @@ public struct AppSettings: Codable, Equatable, Sendable {
     public var keepTranscriptInClipboard = false
     public var hasCompletedOnboarding = false
     public var displayName: String? = nil
+    /// Set once Accessibility has worked; if it later stops (app updated), we explain how to re-enable it.
+    public var accessibilityGrantedOnce = false
 
     public init() {}
 
@@ -112,6 +114,7 @@ public struct AppSettings: Codable, Equatable, Sendable {
         historyRetention = v(.historyRetention, historyRetention)
         keepTranscriptInClipboard = v(.keepTranscriptInClipboard, keepTranscriptInClipboard)
         hasCompletedOnboarding = v(.hasCompletedOnboarding, hasCompletedOnboarding)
+        accessibilityGrantedOnce = v(.accessibilityGrantedOnce, accessibilityGrantedOnce)
         displayName = (try? c.decodeIfPresent(String.self, forKey: .displayName)) ?? nil
     }
 }

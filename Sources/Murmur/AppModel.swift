@@ -225,7 +225,13 @@ final class AppModel: ObservableObject {
         // Only publish real changes; this runs on timers and every publish re-renders the UI.
         if mic != micAuthorized { micAuthorized = mic }
         if ax != accessibilityTrusted { accessibilityTrusted = ax }
+        if ax && !settings.accessibilityGrantedOnce { settings.accessibilityGrantedOnce = true }
     }
+
+    /// Accessibility worked before but doesn't now: macOS revoked it because the app binary changed.
+    var accessibilityNeedsRegrant: Bool { !accessibilityTrusted && settings.accessibilityGrantedOnce }
+
+    static let regrantHelp = "Murmur was updated, so macOS needs Accessibility turned on again: in System Settings → Privacy & Security → Accessibility, select Murmur and click − to remove it, then click Allow here."
 
     func requestMicrophone() {
         AVCaptureDevice.requestAccess(for: .audio) { granted in

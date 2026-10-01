@@ -75,9 +75,9 @@ Evaluation and test harnesses:
 ```bash
 .build/release/murmur-eval stt  openai_whisper-large-v3-v20240930_turbo_632MB TestAudio/cases.json
 .build/release/murmur-eval text Qwen3-4B-Instruct-2507-Q4_K_M TestAudio/text-cases.json
-MURMUR_SUPPORT_DIR=/tmp/murmur-test build/Murmur.app/Contents/MacOS/Murmur --selftest TestAudio/cases.json
-MURMUR_SUPPORT_DIR=/tmp/murmur-test build/Murmur.app/Contents/MacOS/Murmur --e2e TestAudio   # needs Accessibility for the launching app
-build/Murmur.app/Contents/MacOS/Murmur --snapshot /tmp/murmur-snaps                         # renders every screen to PNG
+MURMUR_SUPPORT_DIR=/tmp/murmur-test .build/app/Murmur.app/Contents/MacOS/Murmur --selftest TestAudio/cases.json
+MURMUR_SUPPORT_DIR=/tmp/murmur-test .build/app/Murmur.app/Contents/MacOS/Murmur --e2e TestAudio   # needs Accessibility for the launching app
+.build/app/Murmur.app/Contents/MacOS/Murmur --snapshot /tmp/murmur-snaps                         # renders every screen to PNG
 ```
 
 ## Layout

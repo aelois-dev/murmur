@@ -89,7 +89,7 @@ struct OnboardingView: View {
             PermissionRow(icon: "mic.fill", title: "Microphone", detail: "So Murmur can hear you while you dictate.", granted: model.micAuthorized) {
                 model.requestMicrophone()
             }
-            PermissionRow(icon: "accessibility", title: "Accessibility", detail: "So your shortcut works in every app and text can be pasted where your cursor is. Turn on Murmur in the list that opens.", granted: model.accessibilityTrusted) {
+            PermissionRow(icon: "accessibility", title: "Accessibility", detail: model.accessibilityNeedsRegrant ? AppModel.regrantHelp : "So your shortcut works in every app and text can be pasted where your cursor is. Turn on Murmur in the list that opens.", granted: model.accessibilityTrusted) {
                 Permissions.promptAccessibility()
                 Permissions.openAccessibilitySettings()
             }
