@@ -86,6 +86,8 @@ final class AppModel: ObservableObject {
     @Published var notice: FlowNotice?
     @Published var whisperStatus: ModelStatus = .notDownloaded
     @Published var llmStatus: ModelStatus = .notDownloaded
+    /// "2.1 GB of 18.6 GB" while an AI model downloads.
+    @Published var llmDownloadDetail: String?
     @Published var micAuthorized = false
     @Published var accessibilityTrusted = false
     @Published var hubSection: HubSection = .home
@@ -111,7 +113,15 @@ final class AppModel: ObservableObject {
     var onMicSettingsChanged: (() -> Void)?
 
     init() {
-        settings = settingsStore.load() ?? AppSettings()
+        if let stored = settingsStore.load() {
+            settings = stored
+        } else {
+            // Fresh install: pick the best models this Mac's memory can run.
+            var fresh = AppSettings()
+            fresh.llmModel = ModelCatalog.recommendedLLM(forRAMGB: ModelCatalog.installedRAMGB)
+            fresh.whisperModel = ModelCatalog.recommendedWhisper(forRAMGB: ModelCatalog.installedRAMGB)
+            settings = fresh
+        }
         history = historyStore.load() ?? []
         dictionary = dictionaryStore.load() ?? []
         snippets = snippetStore.load() ?? []
@@ -310,18 +320,35 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Free space on the startup disk, in bytes.
+    static var freeDiskBytes: Int64 {
+        let values = try? FileManager.default.homeDirectoryForCurrentUser.resourceValues(forKeys: [.volumeAvailableCapacityForImportantUsageKey])
+        return values?.volumeAvailableCapacityForImportantUsage ?? .max
+    }
+
     func downloadLLM(_ info: LLMModelInfo) {
         guard llmDownloader == nil else { return }
+        // Leave a few GB spare so the Mac doesn't run out of room.
+        let needed = info.sizeBytes + 3_000_000_000
+        guard Self.freeDiskBytes >= needed else {
+            llmStatus = .failed("Needs \(ByteCountFormatter.string(fromByteCount: needed, countStyle: .file)) free disk space")
+            return
+        }
         llmStatus = .downloading(0)
+        llmDownloadDetail = "Starting…"
         try? FileManager.default.createDirectory(at: AppPaths.llmModelsDirectory, withIntermediateDirectories: true)
         let downloader = FileDownloader(url: info.url, destination: info.localURL)
         llmDownloader = downloader
-        downloader.start(progress: { [weak self] p in
-            Task { @MainActor in self?.llmStatus = .downloading(p) }
+        downloader.start(progress: { [weak self] written, total in
+            Task { @MainActor in
+                self?.llmStatus = .downloading(Double(written) / Double(total))
+                self?.llmDownloadDetail = "\(ByteCountFormatter.string(fromByteCount: written, countStyle: .file)) of \(ByteCountFormatter.string(fromByteCount: total, countStyle: .file))"
+            }
         }, completion: { [weak self] error in
             Task { @MainActor in
                 guard let self else { return }
                 self.llmDownloader = nil
+                self.llmDownloadDetail = nil
                 if let error {
                     self.llmStatus = .failed("Download failed")
                     Log.write("LLM download failed: \(error)")
@@ -342,34 +369,51 @@ extension Notification.Name {
     static let murmurShowHub = Notification.Name("murmurShowHub")
 }
 
-/// URLSession download with progress, written to a destination path when complete.
+/// URLSession download with byte-level progress and automatic resume (large models can be 18+ GB).
 final class FileDownloader: NSObject, URLSessionDownloadDelegate, @unchecked Sendable {
     let url: URL
     let destination: URL
-    private var progress: ((Double) -> Void)?
+    private var progress: ((Int64, Int64) -> Void)?
     private var completion: ((Error?) -> Void)?
     private var session: URLSession?
-    private var lastReported = 0.0
+    private var lastReported: Int64 = 0
+    private var retriesLeft = 5
+    private var finished = false
 
     init(url: URL, destination: URL) {
         self.url = url
         self.destination = destination
     }
 
-    func start(progress: @escaping (Double) -> Void, completion: @escaping (Error?) -> Void) {
+    func start(progress: @escaping (Int64, Int64) -> Void, completion: @escaping (Error?) -> Void) {
         self.progress = progress
         self.completion = completion
-        let session = URLSession(configuration: .default, delegate: self, delegateQueue: nil)
-        self.session = session
-        session.downloadTask(with: url).resume()
+        let config = URLSessionConfiguration.default
+        config.timeoutIntervalForRequest = 60
+        config.timeoutIntervalForResource = 60 * 60 * 6
+        session = URLSession(configuration: config, delegate: self, delegateQueue: nil)
+        session?.downloadTask(with: url).resume()
+    }
+
+    func cancel() {
+        finished = true
+        session?.invalidateAndCancel()
+    }
+
+    private func finish(_ error: Error?) {
+        guard !finished else { return }
+        finished = true
+        completion?(error)
+        completion = nil
+        session?.finishTasksAndInvalidate()
     }
 
     func urlSession(_ session: URLSession, downloadTask: URLSessionDownloadTask, didWriteData bytesWritten: Int64, totalBytesWritten: Int64, totalBytesExpectedToWrite: Int64) {
         guard totalBytesExpectedToWrite > 0 else { return }
-        let p = Double(totalBytesWritten) / Double(totalBytesExpectedToWrite)
-        if p - lastReported >= 0.01 || p >= 1 {
-            lastReported = p
-            progress?(p)
+        // Report roughly every 0.5% (and at the end).
+        if totalBytesWritten - lastReported >= totalBytesExpectedToWrite / 200 || totalBytesWritten == totalBytesExpectedToWrite {
+            lastReported = totalBytesWritten
+            progress?(totalBytesWritten, totalBytesExpectedToWrite)
         }
     }
 
@@ -380,16 +424,26 @@ final class FileDownloader: NSObject, URLSessionDownloadDelegate, @unchecked Sen
             }
             try? FileManager.default.removeItem(at: destination)
             try FileManager.default.moveItem(at: location, to: destination)
-            completion?(nil)
+            finish(nil)
         } catch {
-            completion?(error)
+            finish(error)
         }
-        completion = nil
-        session.finishTasksAndInvalidate()
     }
 
     func urlSession(_ session: URLSession, task: URLSessionTask, didCompleteWithError error: Error?) {
-        if let error { completion?(error); completion = nil }
-        session.finishTasksAndInvalidate()
+        guard let error, !finished else { return }
+        // Network hiccup or sleep: pick up where we left off instead of starting over.
+        if retriesLeft > 0, (error as NSError).code != NSURLErrorCancelled {
+            retriesLeft -= 1
+            let resumeData = (error as NSError).userInfo[NSURLSessionDownloadTaskResumeData] as? Data
+            Log.write("Download interrupted (\(error.localizedDescription)); \(resumeData != nil ? "resuming" : "restarting") — \(retriesLeft) retries left")
+            DispatchQueue.global().asyncAfter(deadline: .now() + 3) { [weak self] in
+                guard let self, !self.finished, let session = self.session else { return }
+                let next = resumeData.map { session.downloadTask(withResumeData: $0) } ?? session.downloadTask(with: self.url)
+                next.resume()
+            }
+            return
+        }
+        finish(error)
     }
 }

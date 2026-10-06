@@ -5,7 +5,7 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 CONFIG="${1:-release}"
 INSTALL="${2:-}"
-VERSION="1.0.0"
+VERSION="1.1.0"
 BUILD_NUMBER="$(git rev-list --count HEAD 2>/dev/null || echo 1)"
 
 BUILD_LOG="$(mktemp)"

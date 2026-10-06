@@ -1,54 +1,6 @@
 import Foundation
 import MurmurCore
 
-public struct LLMModelInfo: Sendable, Identifiable, Hashable {
-    public var id: String
-    public var title: String
-    public var detail: String
-    public var fileName: String
-    public var url: URL
-    public var sizeBytes: Int64
-    /// Qwen3 hybrid models need the "thinking" block suppressed.
-    public var needsNoThink: Bool
-
-    public var localURL: URL { AppPaths.llmModelsDirectory.appendingPathComponent(fileName) }
-    public var isDownloaded: Bool {
-        guard let attrs = try? FileManager.default.attributesOfItem(atPath: localURL.path), let size = attrs[.size] as? Int64 else { return false }
-        return size > sizeBytes / 2
-    }
-}
-
-public struct WhisperModelInfo: Sendable, Identifiable, Hashable {
-    public var id: String
-    public var title: String
-    public var detail: String
-    public var sizeLabel: String
-    public var englishOnly: Bool
-}
-
-public enum ModelCatalog {
-    public static let whisperModels: [WhisperModelInfo] = [
-        WhisperModelInfo(id: "openai_whisper-large-v3-v20240930_turbo_632MB", title: "Large v3 Turbo", detail: "Most accurate · 100+ languages", sizeLabel: "632 MB", englishOnly: false),
-        WhisperModelInfo(id: "openai_whisper-small.en_217MB", title: "Small (English)", detail: "Faster · English only", sizeLabel: "217 MB", englishOnly: true),
-        WhisperModelInfo(id: "openai_whisper-small_216MB", title: "Small", detail: "Faster · 100+ languages", sizeLabel: "216 MB", englishOnly: false),
-        WhisperModelInfo(id: "openai_whisper-base.en", title: "Base (English)", detail: "Fastest · English only", sizeLabel: "140 MB", englishOnly: true),
-    ]
-
-    public static let llmModels: [LLMModelInfo] = [
-        LLMModelInfo(id: "Qwen3-4B-Instruct-2507-Q4_K_M", title: "Qwen3 4B", detail: "Best editing quality",
-                     fileName: "Qwen3-4B-Instruct-2507-Q4_K_M.gguf",
-                     url: URL(string: "https://huggingface.co/unsloth/Qwen3-4B-Instruct-2507-GGUF/resolve/main/Qwen3-4B-Instruct-2507-Q4_K_M.gguf")!,
-                     sizeBytes: 2_497_281_120, needsNoThink: false),
-        LLMModelInfo(id: "Qwen3-1.7B-Q4_K_M", title: "Qwen3 1.7B", detail: "Faster, lighter edits",
-                     fileName: "Qwen3-1.7B-Q4_K_M.gguf",
-                     url: URL(string: "https://huggingface.co/unsloth/Qwen3-1.7B-GGUF/resolve/main/Qwen3-1.7B-Q4_K_M.gguf")!,
-                     sizeBytes: 1_107_409_472, needsNoThink: true),
-    ]
-
-    public static func whisper(_ id: String) -> WhisperModelInfo? { whisperModels.first { $0.id == id } }
-    public static func llm(_ id: String) -> LLMModelInfo? { llmModels.first { $0.id == id } }
-}
-
 /// Context passed to the AI editor.
 public struct EditContext: Sendable {
     public var appName: String?

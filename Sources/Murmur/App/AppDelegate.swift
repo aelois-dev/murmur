@@ -2,6 +2,7 @@ import AppKit
 import AVFoundation
 import Combine
 import MurmurCore
+import MurmurEngine
 import SwiftUI
 
 @MainActor
@@ -205,6 +206,45 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
         langItem.submenu = langMenu
         menu.addItem(langItem)
 
+        let ram = ModelCatalog.installedRAMGB
+        let speechMenu = NSMenu()
+        for m in ModelCatalog.whisperModels(fittingRAMGB: ram, keeping: model.settings.whisperModel) {
+            let downloaded = Transcriber.isDownloaded(m.id)
+            let title = "\(m.title) · \(m.sizeLabel)\(m.id == ModelCatalog.recommendedWhisper(forRAMGB: ram) ? " · Recommended" : "")\(downloaded ? "" : " (downloads)")"
+            let mi = NSMenuItem(title: title, action: #selector(selectSpeechModel(_:)), keyEquivalent: "")
+            mi.target = self
+            mi.representedObject = m.id
+            mi.state = model.settings.whisperModel == m.id ? .on : .off
+            speechMenu.addItem(mi)
+        }
+        let speechItem = NSMenuItem(title: "Speech Model", action: nil, keyEquivalent: "")
+        speechItem.submenu = speechMenu
+        menu.addItem(speechItem)
+
+        let aiMenu = NSMenu()
+        for m in ModelCatalog.llmModels(fittingRAMGB: ram, keeping: model.settings.llmModel) {
+            let title = "\(m.title) · \(m.sizeLabel)\(m.id == ModelCatalog.recommendedLLM(forRAMGB: ram) ? " · Recommended" : "")\(m.isDownloaded ? "" : " (downloads)")"
+            let mi = NSMenuItem(title: title, action: #selector(selectAIModel(_:)), keyEquivalent: "")
+            mi.target = self
+            mi.representedObject = m.id
+            mi.state = model.settings.llmModel == m.id ? .on : .off
+            aiMenu.addItem(mi)
+        }
+        aiMenu.addItem(.separator())
+        let aiToggle = NSMenuItem(title: "AI Editing", action: #selector(toggleAIEditing), keyEquivalent: "")
+        aiToggle.target = self
+        aiToggle.state = model.settings.aiEditing ? .on : .off
+        aiMenu.addItem(aiToggle)
+        let aiStatusText: String
+        switch model.llmStatus {
+        case .downloading(let p): aiStatusText = "AI Model (downloading \(Int(p * 100))%)"
+        case .loading: aiStatusText = "AI Model (loading…)"
+        default: aiStatusText = "AI Model"
+        }
+        let aiItem = NSMenuItem(title: aiStatusText, action: nil, keyEquivalent: "")
+        aiItem.submenu = aiMenu
+        menu.addItem(aiItem)
+
         menu.addItem(.separator())
         menu.addItem(item("Settings…", #selector(openSettings), key: ","))
         menu.addItem(item("Quit Murmur", #selector(quit), key: "q"))
@@ -231,6 +271,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     }
     @objc private func selectMic(_ sender: NSMenuItem) { model.settings.microphoneUID = sender.representedObject as? String }
     @objc private func selectLanguage(_ sender: NSMenuItem) { model.settings.language = sender.representedObject as? String }
+    @objc private func selectSpeechModel(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String else { return }
+        model.settings.whisperModel = id
+    }
+    @objc private func selectAIModel(_ sender: NSMenuItem) {
+        guard let id = sender.representedObject as? String, let info = ModelCatalog.llm(id) else { return }
+        model.settings.llmModel = id
+        // Picking a model that isn't on this Mac yet starts its download.
+        if !info.isDownloaded { model.downloadLLM(info) }
+    }
+    @objc private func toggleAIEditing() { model.settings.aiEditing.toggle() }
     @objc private func quit() { NSApp.terminate(nil) }
 
     // MARK: - Main menu (for ⌘Q, ⌘W, copy/paste in text fields)

@@ -146,40 +146,68 @@ struct OnboardingView: View {
     }
 
     private var models: some View {
-        VStack(alignment: .leading, spacing: 18) {
-            Text("On-device models").font(Theme.display(32))
-            Text("Murmur transcribes and edits on your Mac, so your voice never leaves it. The first download takes a minute.")
+        let ram = ModelCatalog.installedRAMGB
+        return VStack(alignment: .leading, spacing: 16) {
+            Text("Choose your models").font(Theme.display(32))
+            Text("Everything runs on this Mac, so your voice never leaves it. We've picked the best fit for its \(ram) GB of memory — change it here or later in Settings.")
                 .font(.system(size: 13))
                 .foregroundStyle(Theme.secondary)
+                .fixedSize(horizontal: false, vertical: true)
             Card {
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
                         Text("Speech recognition").font(.system(size: 13, weight: .semibold))
-                        Text(ModelCatalog.whisper(model.settings.whisperModel).map { "\($0.title) · \($0.sizeLabel)" } ?? "").font(.system(size: 12)).foregroundStyle(Theme.secondary)
+                        Spacer()
+                        Picker("", selection: $model.settings.whisperModel) {
+                            ForEach(ModelCatalog.whisperModels(fittingRAMGB: ram, keeping: model.settings.whisperModel)) { m in
+                                Text("\(m.title) · \(m.sizeLabel)\(m.id == ModelCatalog.recommendedWhisper(forRAMGB: ram) ? " · Recommended" : "")").tag(m.id)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 290)
                     }
-                    Spacer()
-                    ModelStatusLine(status: model.whisperStatus, detail: nil)
-                    if case .failed = model.whisperStatus {
-                        Button("Retry") { model.loadWhisper() }.buttonStyle(PillButtonStyle(kind: .primary, compact: true))
+                    HStack {
+                        Text(ModelCatalog.whisper(model.settings.whisperModel)?.detail ?? "").font(.system(size: 12)).foregroundStyle(Theme.secondary)
+                        Spacer()
+                        ModelStatusLine(status: model.whisperStatus, detail: nil)
+                        if case .failed = model.whisperStatus {
+                            Button("Retry") { model.loadWhisper() }.buttonStyle(PillButtonStyle(kind: .primary, compact: true))
+                        }
                     }
                 }
             }
             Card {
-                HStack {
-                    VStack(alignment: .leading, spacing: 3) {
-                        Text("AI editing (optional)").font(.system(size: 13, weight: .semibold))
-                        Text(ModelCatalog.llm(model.settings.llmModel).map { "\($0.title) · \(ByteCountFormatter.string(fromByteCount: $0.sizeBytes, countStyle: .file))" } ?? "")
-                            .font(.system(size: 12)).foregroundStyle(Theme.secondary)
+                VStack(alignment: .leading, spacing: 10) {
+                    HStack {
+                        Text("AI editing").font(.system(size: 13, weight: .semibold))
+                        Spacer()
+                        Picker("", selection: $model.settings.llmModel) {
+                            ForEach(ModelCatalog.llmModels(fittingRAMGB: ram, keeping: model.settings.llmModel)) { m in
+                                Text("\(m.title) · \(m.sizeLabel)\(m.id == ModelCatalog.recommendedLLM(forRAMGB: ram) ? " · Recommended" : "")").tag(m.id)
+                            }
+                        }
+                        .labelsHidden()
+                        .frame(width: 290)
                     }
-                    Spacer()
-                    ModelStatusLine(status: model.llmStatus, detail: nil)
-                    if let info = ModelCatalog.llm(model.settings.llmModel), !info.isDownloaded, model.llmStatus == .notDownloaded {
-                        Button("Download") { model.downloadLLM(info) }.buttonStyle(PillButtonStyle(kind: .primary, compact: true))
+                    HStack {
+                        Text(ModelCatalog.llm(model.settings.llmModel)?.detail ?? "").font(.system(size: 12)).foregroundStyle(Theme.secondary)
+                        Spacer()
+                        VStack(alignment: .trailing, spacing: 3) {
+                            ModelStatusLine(status: model.llmStatus, detail: nil)
+                            if let detail = model.llmDownloadDetail {
+                                Text(detail).font(.system(size: 11)).monospacedDigit().foregroundStyle(Theme.secondary)
+                            }
+                        }
+                        if let info = ModelCatalog.llm(model.settings.llmModel), !info.isDownloaded, model.llmStatus == .notDownloaded || isFailed(model.llmStatus) {
+                            Button("Download") { model.downloadLLM(info) }.buttonStyle(PillButtonStyle(kind: .primary, compact: true))
+                        }
                     }
+                    Text("Optional: removes filler words, applies your corrections and powers Command Mode. Dictation works without it.")
+                        .font(.system(size: 11)).foregroundStyle(Theme.tertiary)
                 }
             }
         }
-        .frame(maxWidth: 580)
+        .frame(maxWidth: 600)
     }
 
     private var tryIt: some View {
@@ -209,6 +237,11 @@ struct OnboardingView: View {
         }
         .frame(maxWidth: 580)
     }
+}
+
+private func isFailed(_ status: ModelStatus) -> Bool {
+    if case .failed = status { return true }
+    return false
 }
 
 struct PermissionRow: View {

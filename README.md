@@ -73,7 +73,10 @@ Updates: download the newer release and replace the app. It's signed with the sa
 
 - The app is signed with your **Apple Development** certificate (team YJTAS82KYW), so macOS keeps its Accessibility and Microphone permissions across rebuilds. The certificate expires on 1 Oct 2027; renew it in Xcode → Settings → Accounts → Manage Certificates. The build script falls back to ad-hoc signing if no certificate is found, and then permissions must be re-granted after every rebuild.
 - If you switch to a speech model that hasn't been used before, the first load takes several minutes while macOS prepares it for the Neural Engine. After that it loads in about 5 s.
-- Memory use is about 4–5 GB with the 4B AI model. Pick *Qwen3 1.7B* in Settings → AI editing for a lighter, faster (slightly less clever) editor.
+- **Choosing models:** pick them during setup, in Settings, or from the menu bar (Speech Model / AI Model). Only models that fit the Mac's memory are listed, and the best fit is marked *Recommended* and preselected on a fresh install:
+  - **16 GB Macs:** Large v3 Turbo speech plus the Qwen3 4B editor (about 4–5 GB of memory in use). Qwen3 1.7B is lighter and faster. A bigger Qwen3 8B tested slower and no better, so it isn't offered.
+  - **32 GB+ Macs (e.g. 48 GB):** full-precision Large v3 Turbo plus the **Qwen3 30B-A3B** editor (18.6 GB download): best quality, and still fast.
+  - Downloads resume if interrupted and check free disk space first. Settings → AI editing → *Downloaded models* lets you remove ones you don't use.
 - Logs: `~/Library/Application Support/Murmur/murmur.log`. Data (history, dictionary, snippets, settings) lives in the same folder.
 
 ## Building

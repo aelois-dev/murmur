@@ -6,6 +6,7 @@ import SwiftUI
 struct SettingsView: View {
     @EnvironmentObject var model: AppModel
     @State private var confirmClear = false
+    private let ram = ModelCatalog.installedRAMGB
     @State private var globeUsage = Permissions.globeKeyUsage
 
     var body: some View {
@@ -83,11 +84,11 @@ struct SettingsView: View {
                     .labelsHidden()
                     .frame(width: 180)
                 }
-                SettingsRow(title: "Speech model", detail: "Runs on this Mac's Neural Engine. Nothing is sent anywhere.") {
+                SettingsRow(title: "Speech model", detail: "Runs on this Mac's Neural Engine. Nothing is sent anywhere. A newly picked model takes a few minutes to prepare the first time.") {
                     VStack(alignment: .trailing, spacing: 6) {
                         Picker("", selection: $model.settings.whisperModel) {
-                            ForEach(ModelCatalog.whisperModels) { m in
-                                Text("\(m.title) · \(m.sizeLabel)").tag(m.id)
+                            ForEach(ModelCatalog.whisperModels(fittingRAMGB: ram, keeping: model.settings.whisperModel)) { m in
+                                Text("\(m.title) · \(m.sizeLabel)\(m.id == ModelCatalog.recommendedWhisper(forRAMGB: ram) ? " · Recommended" : "")").tag(m.id)
                             }
                         }
                         .labelsHidden()
@@ -104,23 +105,27 @@ struct SettingsView: View {
                 SettingsRow(title: "AI auto-edits", detail: "An on-device language model removes filler words and false starts and applies your corrections, like an editor that never changes what you meant.") {
                     Toggle("", isOn: $model.settings.aiEditing).labelsHidden().toggleStyle(.switch).tint(Theme.accent)
                 }
-                SettingsRow(title: "AI model", detail: "Also powers Command Mode.") {
+                SettingsRow(title: "AI model", detail: "Also powers Command Mode. Bigger models edit more cleverly but take longer; only models that fit this Mac's \(ram) GB of memory are listed.") {
                     VStack(alignment: .trailing, spacing: 6) {
                         Picker("", selection: $model.settings.llmModel) {
-                            ForEach(ModelCatalog.llmModels) { m in
-                                Text("\(m.title) · \(ByteCountFormatter.string(fromByteCount: m.sizeBytes, countStyle: .file))").tag(m.id)
+                            ForEach(ModelCatalog.llmModels(fittingRAMGB: ram, keeping: model.settings.llmModel)) { m in
+                                Text("\(m.title) · \(m.sizeLabel)\(m.id == ModelCatalog.recommendedLLM(forRAMGB: ram) ? " · Recommended" : "")").tag(m.id)
                             }
                         }
                         .labelsHidden()
-                        .frame(width: 240)
+                        .frame(width: 260)
                         HStack(spacing: 8) {
                             ModelStatusLine(status: model.llmStatus, detail: ModelCatalog.llm(model.settings.llmModel)?.detail)
                             if let info = ModelCatalog.llm(model.settings.llmModel), !info.isDownloaded, !isDownloading(model.llmStatus) {
                                 Button("Download") { model.downloadLLM(info) }.buttonStyle(PillButtonStyle(kind: .primary, compact: true))
                             }
                         }
+                        if let detail = model.llmDownloadDetail {
+                            Text(detail).font(.system(size: 11)).monospacedDigit().foregroundStyle(Theme.secondary)
+                        }
                     }
                 }
+                DownloadedModelsRow()
                 SettingsRow(title: "Context awareness", detail: "Uses the app you're in and the text just before your cursor to spell names right and continue sentences naturally. Stays on this Mac.") {
                     Toggle("", isOn: $model.settings.contextAwareness).labelsHidden().toggleStyle(.switch).tint(Theme.accent)
                 }
@@ -202,6 +207,68 @@ struct SettingsView: View {
     private func isDownloading(_ status: ModelStatus) -> Bool {
         if case .downloading = status { return true }
         return false
+    }
+}
+
+/// Lists models on disk with their sizes so unused ones can be removed.
+struct DownloadedModelsRow: View {
+    @EnvironmentObject var model: AppModel
+    @State private var refresh = 0
+
+    private var entries: [(id: String, name: String, bytes: Int64, inUse: Bool, delete: () -> Void)] {
+        _ = refresh
+        var list: [(id: String, name: String, bytes: Int64, inUse: Bool, delete: () -> Void)] = []
+        for m in ModelCatalog.whisperModels {
+            if let folder = Transcriber.localFolder(for: m.id) {
+                list.append((m.id, "Speech · \(m.title)", Self.size(of: folder), m.id == model.settings.whisperModel,
+                             { try? Transcriber.delete(m.id) }))
+            }
+        }
+        for m in ModelCatalog.llmModels where m.isDownloaded {
+            list.append((m.id, "AI · \(m.title)", Self.size(of: m.localURL), m.id == model.settings.llmModel,
+                         { try? FileManager.default.removeItem(at: m.localURL) }))
+        }
+        return list
+    }
+
+    static func size(of url: URL) -> Int64 {
+        var isDir: ObjCBool = false
+        guard FileManager.default.fileExists(atPath: url.path, isDirectory: &isDir) else { return 0 }
+        if !isDir.boolValue { return (try? FileManager.default.attributesOfItem(atPath: url.path)[.size] as? Int64) ?? 0 }
+        let files = FileManager.default.enumerator(at: url, includingPropertiesForKeys: [.fileSizeKey])
+        var total: Int64 = 0
+        while let f = files?.nextObject() as? URL { total += Int64((try? f.resourceValues(forKeys: [.fileSizeKey]).fileSize) ?? 0) }
+        return total
+    }
+
+    var body: some View {
+        let items = entries
+        VStack(alignment: .leading, spacing: 8) {
+            HStack {
+                Text("Downloaded models").font(.system(size: 13, weight: .medium))
+                Spacer()
+                Text("\(ByteCountFormatter.string(fromByteCount: items.reduce(0) { $0 + $1.bytes }, countStyle: .file)) on disk · \(ByteCountFormatter.string(fromByteCount: AppModel.freeDiskBytes, countStyle: .file)) free")
+                    .font(.system(size: 11)).foregroundStyle(Theme.secondary)
+            }
+            ForEach(items, id: \.id) { item in
+                HStack {
+                    Text(item.name).font(.system(size: 12))
+                    Text(ByteCountFormatter.string(fromByteCount: item.bytes, countStyle: .file)).font(.system(size: 12)).foregroundStyle(Theme.secondary)
+                    Spacer()
+                    if item.inUse {
+                        Text("In use").font(.system(size: 11, weight: .medium)).foregroundStyle(Theme.success)
+                    } else {
+                        Button("Remove") {
+                            item.delete()
+                            refresh += 1
+                        }
+                        .buttonStyle(PillButtonStyle(kind: .destructive, compact: true))
+                    }
+                }
+            }
+        }
+        .padding(.horizontal, 16)
+        .padding(.vertical, 13)
     }
 }
 
