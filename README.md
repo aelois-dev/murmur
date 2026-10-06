@@ -4,6 +4,12 @@ A private, on-device voice dictation app for macOS, modelled closely on Wispr Fl
 
 Everything runs on your Mac. Speech recognition uses Whisper Large v3 Turbo on the Neural Engine (via WhisperKit), and text editing uses a local Qwen3 language model (via llama.cpp). No audio or text leaves your computer.
 
+## ⬇️ Download the app
+
+**[Download Murmur.zip (latest version)](https://github.com/aelois-dev/murmur/releases/latest/download/Murmur.zip)**. You need to be signed in to GitHub, because this repo is private.
+
+The app isn't in the file list above: it's attached to each [release](https://github.com/aelois-dev/murmur/releases). Unzip it, drag **Murmur** into **Applications**, and see [Install on another Mac](#install-on-another-mac) for the first-launch steps.
+
 ## First launch (about 2 minutes)
 
 **You need a microphone.** A Mac mini has no built-in mic, and the only input on your Mac right now is "Microsoft Teams Audio", a virtual device. Connect AirPods, a headset, a webcam or a USB mic first. Onboarding includes a live mic test with a device picker.
