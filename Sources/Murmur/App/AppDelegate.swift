@@ -15,6 +15,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate, NSWindowDelegate, NSMe
     private var cancellables: Set<AnyCancellable> = []
 
     func applicationDidFinishLaunching(_ notification: Notification) {
+        // Test mode: exercise the in-app model download (as on a fresh Mac), then quit. Runs alongside a normal instance.
+        if let i = CommandLine.arguments.firstIndex(of: "--download-test"), i + 1 < CommandLine.arguments.count {
+            DownloadTest.run(modelID: CommandLine.arguments[i + 1], model: model)
+            return
+        }
         if let other = NSRunningApplication.runningApplications(withBundleIdentifier: Bundle.main.bundleIdentifier ?? "").first(where: { $0 != .current }) {
             other.activate()
             NSApp.terminate(nil)

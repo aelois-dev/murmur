@@ -203,7 +203,11 @@ public enum AppPaths {
     }
     /// Models always live in the real Application Support folder (they're large and shared with test runs).
     public static var modelsDirectory: URL {
-        FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
+        // Tests can simulate a fresh Mac with an empty models folder.
+        if let override = ProcessInfo.processInfo.environment["MURMUR_MODELS_DIR"], !override.isEmpty {
+            return URL(fileURLWithPath: override, isDirectory: true)
+        }
+        return FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)[0]
             .appendingPathComponent("Murmur/Models", isDirectory: true)
     }
     public static var whisperModelsDirectory: URL { modelsDirectory.appendingPathComponent("whisper", isDirectory: true) }
