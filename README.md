@@ -6,9 +6,11 @@ Everything runs on your Mac. Speech recognition uses Whisper Large v3 Turbo on t
 
 ## ⬇️ Download the app
 
-**[Download Murmur.zip (latest version)](https://github.com/aelois-dev/murmur/releases/latest/download/Murmur.zip)**. You need to be signed in to GitHub, because this repo is private.
+**The app is the file [`Murmur.zip`](Murmur.zip) in the list above.** Click it, then use the **download button** (⬇, top right of the file view). Or use this direct link: **[Download Murmur.zip](https://github.com/aelois-dev/murmur/raw/main/Murmur.zip)**. You need to be signed in to GitHub, because this repo is private.
 
-The app isn't in the file list above: it's attached to each [release](https://github.com/aelois-dev/murmur/releases). Unzip it, drag **Murmur** into **Applications**, and see [Install on another Mac](#install-on-another-mac) for the first-launch steps.
+In your Downloads folder, double-click **Murmur.zip**. An app called **Murmur** appears next to it; its icon is white sound-wave bars on a dark tile, and Finder hides the ".app" ending. Drag it into **Applications**, then follow [Install on another Mac](#install-on-another-mac) for the one-time first-launch steps.
+
+(If you used **Code → Download ZIP**, the app is the `Murmur.zip` inside that folder. Every version is also on the [Releases](https://github.com/aelois-dev/murmur/releases) page.)
 
 ## First launch (about 2 minutes)
 
