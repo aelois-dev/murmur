@@ -18,6 +18,17 @@ Everything runs on your Mac. Speech recognition uses Whisper Large v3 Turbo on t
 
 The models are already downloaded and prepared, so dictation works straight away.
 
+## Install on another Mac
+
+1. Download `Murmur-<version>.zip` from this repo's **Releases** page, unzip it, and drag **Murmur.app** into **Applications**.
+2. First launch: macOS blocks apps that aren't notarized, so do one of these:
+   - Double-click Murmur, click **Done**, then go to **System Settings → Privacy & Security** and click **Open Anyway** (you'll confirm with your password); or
+   - Run `xattr -dr com.apple.quarantine /Applications/Murmur.app` in Terminal, then open it normally.
+3. Follow the onboarding: allow **Microphone** and **Accessibility**, and check the mic test (you need a microphone; AirPods are fine).
+4. The speech model (632 MB) downloads automatically. The first time on each Mac, macOS then prepares it for the Neural Engine, which takes several minutes (about 15 on an M1, less on newer chips). For AI editing and Command Mode, click **Download** for the AI model (2.5 GB) in onboarding or Settings → AI editing.
+
+Updates: download the newer release and replace the app. It's signed with the same certificate, so the permissions carry over.
+
 ## Shortcuts (same as Wispr Flow)
 
 | Action | Keys |
