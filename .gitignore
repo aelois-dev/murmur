@@ -1,7 +1,7 @@
 .build/
 .swiftpm/
 build/
-*.xcframework/**/dSYMs/
+Vendor/**/dSYMs/
 TestAudio/*.wav
 .DS_Store
 TestAudio/e2e-report.txt
